@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*
+packages/**/.env
+packages/**/.env.*
+*.local
+!.env.example
+!.env.*.example
+!packages/**/.env.example
+!packages/**/.env.*.example
+packages/extension/dist/
+packages/dashboard/dist/
+dashboard-dev*.log
+dashboard-prod-api-*.log
+packages/extension/tsconfig.tsbuildinfo  # 빌드 테스트 파일 무시
+packages/dashboard/tsconfig.tsbuildinfo  # 빌드 테스트 파일 무시
+.idea/
+

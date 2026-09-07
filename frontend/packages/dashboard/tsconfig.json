@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
+    "strict": true,
+    "jsx": "react-jsx",
+    "declaration": true,
+    "sourceMap": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@san/shared":   ["../shared/src/index.ts"],
+      "@san/shared/*": ["../shared/src/*"],
+      "@san/ui":       ["../ui/src/index.ts"],
+      "@ui/*":         ["../ui/src/*"],
+      "@dashboard/*":  ["./src/*"],
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

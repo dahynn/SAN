@@ -1,0 +1,34 @@
+{
+  "name": "san-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev:dashboard": "pnpm --filter @san/dashboard dev",
+    "dev:dashboard:local": "pnpm --filter @san/dashboard dev:local",
+    "dev:dashboard:prod-api": "pnpm --filter @san/dashboard dev:prod-api",
+    "dev:extension": "pnpm --filter @san/extension dev",
+    "dev:extension:prod-api": "pnpm --filter @san/extension dev:prod-api",
+    "build:all": "pnpm --filter @san/dashboard build && pnpm --filter @san/extension build",
+    "build:dashboard:prod": "pnpm --filter @san/dashboard build:prod",
+    "build:extension:prod": "pnpm --filter @san/extension build:prod",
+    "lint": "pnpm --filter '*' lint"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.4",
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.4.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.2",
+  "dependencies": {
+    "env": "^0.0.2",
+    "lucide-react": "^1.14.0"
+  }
+}

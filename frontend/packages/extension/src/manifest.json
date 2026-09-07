@@ -1,0 +1,74 @@
+{
+  "manifest_version": 3,
+  "name": "SAN: Scrap and Notify",
+  "description": "웹에서 수집한 링크, 텍스트, 이미지를 SAN 지식 관리 서비스에 저장하고 관리합니다.",
+  "version": "2.0.1",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "tabs",
+    "activeTab",
+    "contextMenus",
+    "commands",
+    "notifications",
+    "alarms"
+  ],
+  "host_permissions": [
+    "http://localhost/*",
+    "https://k14a309.p.ssafy.io/*"
+  ],
+  "externally_connectable": {
+    "matches": [
+      "http://localhost/*",
+      "https://k14a309.p.ssafy.io/*"
+    ]
+  },
+  "icons": {
+    "16": "SAN_LOGO.png",
+    "48": "SAN_LOGO.png",
+    "128": "SAN_LOGO.png"
+  },
+  "action": {
+    "default_icon": "SAN_LOGO.png"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+S",
+        "mac": "Alt+S"
+      },
+      "description": "SAN 사이드패널 열기/닫기"
+    },
+    "capture_image": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "현재 탭(전체 화면)을 이미지로 캡처"
+    }
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel/index.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "src/content/index.ts"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "web_accessible_resources": [
+  {
+    "resources": ["fonts/*.woff"],
+    "matches": ["<all_urls>"]
+  }
+]
+}

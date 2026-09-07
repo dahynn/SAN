@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "types": ["chrome"],
+    "noEmit": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
+    // "baseUrl": ".",  ← 제거 (typescript 4.7 이상에서는 baseUrl이 자동으로 프로젝트 루트로 설정됨)
+    "paths": {
+      "@extension/*": ["./src/*"],       // ./ 명시적으로 추가
+      "@sidepanel/*": ["./src/sidepanel/*"],
+      "@san/shared": ["../shared/src"],
+      "@san/shared/*": ["../shared/src/*"],
+      "@san/ui": ["../ui/src"],
+      "@san/ui/*": ["../ui/src/*"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "../shared/src/**/*",
+    "../ui/src/**/*"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@san/shared/*": ["./packages/shared/src/*"],
+      "@san/ui/*": ["./packages/ui/src/*"],
+      "@san/extension/*": ["./packages/extension/src/*"],
+      "@san/dashboard/*": ["./packages/dashboard/src/*"]
+    },
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
+    "noEmit": true
+  },
+  "include": ["types/**/*.d.ts"],
+  "exclude": ["node_modules", "dist", "build", "**/node_modules"]
+}

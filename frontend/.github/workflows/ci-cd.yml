@@ -1,0 +1,90 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+        continue-on-error: true
+
+      - name: Build dashboard
+        run: pnpm --filter @san/dashboard build
+
+      - name: Build extension
+        run: pnpm --filter @san/extension build
+        continue-on-error: true
+
+  deploy:
+    name: Deploy Dashboard
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            REPO_URL="https://github.com/${{ github.repository }}.git"
+            DEPLOY_DIR="$HOME/san-frontend"
+
+            if [ ! -d "$DEPLOY_DIR" ]; then
+              git clone "$REPO_URL" "$DEPLOY_DIR"
+            fi
+            cd "$DEPLOY_DIR"
+            git fetch origin main
+            git reset --hard origin/main
+
+            # 배포
+            docker compose down || true
+            docker compose up -d --build
+
+            # 헬스체크
+            echo "Waiting for frontend to start..."
+            for i in {1..12}; do
+              if docker compose exec -T dashboard curl -f http://localhost:80; then
+                echo "Frontend is UP!"
+                exit 0
+              fi
+              echo "Waiting... ($i/12)"
+              sleep 5
+            done
+            
+            echo "Health check failed:"
+            docker compose logs dashboard
+            exit 1

@@ -1,0 +1,7 @@
+services:
+  dashboard:
+    build: .
+    container_name: san-dashboard
+    ports:
+      - "3000:80"
+    restart: unless-stopped

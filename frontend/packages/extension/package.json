@@ -1,0 +1,34 @@
+{
+  "name": "@san/extension",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:prod-api": "vite --mode prod-api",
+    "build": "tsc && vite build --configLoader runner",
+    "build:local": "tsc && vite build --mode development --configLoader runner",
+    "build:prod": "tsc && vite build --mode production --configLoader runner",
+    "test:og": "node scripts/og-metadata-smoke.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@san/shared": "workspace:*",
+    "@san/ui": "workspace:*",
+    "lucide-react": "^1.14.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.4.0",
+    "@tailwindcss/vite": "^4.2.4",
+    "@types/chrome": "^0.0.260",
+    "@types/node": "^24.12.2",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.2.4",
+    "typescript": "^5.4.0",
+    "vite": "^6.0.0"
+  }
+}
