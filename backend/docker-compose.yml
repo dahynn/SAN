@@ -1,0 +1,90 @@
+services:
+  redis:
+    image: valkey/valkey:8-alpine
+    container_name: san-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: valkey-server --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  db:
+    image: pgvector/pgvector:pg15
+    container_name: san-db
+    environment:
+      - POSTGRES_DB=san
+      - POSTGRES_USER=san
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - GRAFANA_DB_PASSWORD=${GRAFANA_DB_PASSWORD:-grafana_reader_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./docker/db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U san -d san"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  backend:
+    build: .
+    container_name: san-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/san
+      - SPRING_DATASOURCE_USERNAME=san
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - AI_SERVER_URL=http://host.docker.internal:8001
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.6.1
+    container_name: san-grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_DEFAULT_THEME=light
+      - GRAFANA_DB_PASSWORD=${GRAFANA_DB_PASSWORD:-grafana_reader_password}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  redis_data:
+  grafana_data:

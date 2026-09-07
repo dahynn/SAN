@@ -1,0 +1,49 @@
+package com.san.api.global.outbox.dto.response;
+
+import com.san.api.global.outbox.entity.OutboxEvent;
+import com.san.api.global.outbox.entity.OutboxEventStatus;
+import com.san.api.global.outbox.entity.OutboxEventType;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.UUID;
+
+/** 운영 조회에 노출할 Outbox 이벤트 응답입니다. */
+public record OutboxEventResponse(
+        UUID outboxEventId,
+        OutboxEventType eventType,
+        String eventTypeDescription,
+        String aggregateType,
+        UUID aggregateId,
+        Map<String, Object> payload,
+        OutboxEventStatus status,
+        String statusDescription,
+        int retryCount,
+        int maxRetryCount,
+        LocalDateTime nextAttemptAt,
+        LocalDateTime processedAt,
+        String lastErrorMessage,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
+) {
+
+    public static OutboxEventResponse from(OutboxEvent event) {
+        return new OutboxEventResponse(
+                event.getOutboxEventId(),
+                event.getEventType(),
+                event.getEventType().getDescription(),
+                event.getAggregateType(),
+                event.getAggregateId(),
+                event.getPayload(),
+                event.getStatus(),
+                event.getStatus().getDescription(),
+                event.getRetryCount(),
+                event.getMaxRetryCount(),
+                event.getNextAttemptAt(),
+                event.getProcessedAt(),
+                event.getLastErrorMessage(),
+                event.getCreatedAt(),
+                event.getUpdatedAt()
+        );
+    }
+}

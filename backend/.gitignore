@@ -1,0 +1,53 @@
+Demo Setting
+
+# 백엔드 전용 ignore파일
+.idea/
+.gradle/
+.gradle-local/
+build/
+out/
+target/
+*.iml
+*.class
+*.log
+*.log.*
+logs/
+.DS_Store
+Thumbs.db
+*.swp
+
+# VS Code
+.vscode/settings.json
+.vscode/*
+!.vscode/extensions.json
+
+# 환경 변수 / 로컬 설정
+.env
+.env.*
+*.env
+!.env.example
+src/main/resources/application-local.yml
+src/main/resources/application-secret.yml
+# src/main/resources/application.yml
+src/main/resources/application-test.yml
+
+# DB 수동 SQL
+src/main/resources/db/manual/*.sql
+!src/main/resources/db/manual/.gitkeep
+
+# 협업용 .md파일은 무시
+docs/*
+
+# 에디터 설정
+.editorconfig
+
+# 로컬 실행/생성 파일
+bin/
+tmp/
+temp/
+uploads/
+files/
+generated/
+
+# 프로젝트 리소스
+src/main/resources/insuPDF/
