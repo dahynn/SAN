@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "imported_on": "2026-09-07",
+  "target": "https://github.com/dahynn/SAN.git",
+  "strategy": "Unsquashed merge with read-tree prefix; original main commits remain ancestors",
+  "excluded_repositories": ["Scrap-Notify/docs", "Scrap-Notify/san-engine", "Scrap-Notify/.github"],
+  "sources": [
+    {"directory": "frontend", "repository": "https://github.com/Scrap-Notify/san-frontend.git", "ref": "main", "commit": "023861902cc31242572ccd6a16b587bafd5662ec", "commit_count": 454},
+    {"directory": "backend", "repository": "https://github.com/Scrap-Notify/san-backend.git", "ref": "main", "commit": "5f859cc1957c2de87e2602d34479e4628669ac02", "commit_count": 566},
+    {"directory": "ai", "repository": "https://github.com/Scrap-Notify/san-ai.git", "ref": "main", "commit": "dc934c60f21e719da472e4e1f0bd106f32fc3bb3", "commit_count": 115}
+  ]
+}
