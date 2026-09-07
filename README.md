@@ -14,6 +14,8 @@ Scrap-Notify 팀 프로젝트의 프론트엔드·백엔드·AI를 서비스별 
 
 각 서비스는 자신의 디렉터리에서 기존 도구로 작업합니다. Java 21, Node 22, pnpm 10.33.2, Python 및 uv가 필요합니다. 실제 Python 버전은 `ai/.python-version`도 확인합니다.
 
+최초 통합의 [검증 결과와 알려진 선행 실패](integration/verification.md)를 먼저 확인합니다. 현재 로컬 환경에는 저장소 전용 `.local/tools/bin/uv`가 준비되어 있으며 Makefile이 이를 우선 사용합니다. 다른 컴퓨터에서는 uv를 설치하거나 `make ai-test UV=/path/to/uv`로 지정합니다.
+
 ```sh
 make verify-imports
 make frontend-install
@@ -24,9 +26,13 @@ make ai-lint
 make ai-test
 ```
 
+확장 프로그램 production 빌드는 `VITE_API_BASE_URL`, `VITE_DASHBOARD_BASE_URL`을 요구합니다. 정적 빌드만 확인하려면 `VITE_API_BASE_URL=http://localhost:8080 VITE_DASHBOARD_BASE_URL=http://localhost:5173 make frontend-build`를 사용할 수 있습니다. 이 결과물은 로컬 테스트용이며 운영용 주소로 검증된 배포 결과물이 아닙니다.
+
 실행 설정과 환경변수는 각 서비스 README와 `.env.example`을 기준으로 따로 준비합니다. 실제 `.env`, 토큰, 인증서, 운영 데이터는 통합하지 않습니다. AI 실서비스는 외부 API 비용이 발생할 수 있으므로 키를 넣고 실행하기 전에 확인해야 합니다.
 
 Docker를 사용할 경우 `frontend/`, `backend/`, `ai/`에서 각각 실행하여 기존 빌드 컨텍스트와 상대 경로를 유지합니다. 이번 변경은 코드·Git 이력 통합이며, 세 서비스를 한꺼번에 기동하는 신규 Compose나 배포 환경을 구현한 것은 아닙니다.
+
+`make ai-test`는 `.env` 자동 로딩과 네트워크 연결을 차단하고 API 키를 비운 격리 테스트입니다. 실제 URL 추출·이미지 분석 테스트 2개는 제외하고, 키가 필요한 통합 테스트는 원본의 skip 조건을 따릅니다. 외부 AI 연동 성공 여부를 검증하지 않습니다.
 
 ## 이력·배포 경계
 
