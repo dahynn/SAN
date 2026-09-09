@@ -13,6 +13,8 @@ import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /** 매일의 요약 엔티티 */
@@ -45,6 +47,11 @@ public class DailySummary extends BaseEntity {
     @Column(columnDefinition = "vector(1536)")
     private float[] embedding;
 
+    @ElementCollection
+    @CollectionTable(name = "daily_summary_sources", joinColumns = @JoinColumn(name = "summary_id"))
+    @OrderColumn(name = "source_order")
+    private List<TilSourceSnapshot> sourceSnapshots = new ArrayList<>();
+
     /**
      * 매일의 요약 생성
      *
@@ -76,11 +83,13 @@ public class DailySummary extends BaseEntity {
      * @param targetDate 요약 대상 날짜
      * @return 새 매일의 요약 엔티티
      */
-    public static DailySummary create(User user, LocalDate targetDate) {
-        return DailySummary.builder()
+    public static DailySummary create(User user, LocalDate targetDate, List<TilSourceSnapshot> sourceSnapshots) {
+        DailySummary summary = DailySummary.builder()
                 .user(user)
                 .targetDate(targetDate)
                 .build();
+        summary.sourceSnapshots.addAll(sourceSnapshots);
+        return summary;
     }
 
     /**

@@ -116,6 +116,7 @@ def test_llm_summarize_failure_returns_422() -> None:
 
     assert response.status_code == 422
     assert response.json()["error"] == "til_generation_failed"
+    assert response.json()["message"] == "TIL 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."
 
 
 # Step2 acall_json 응답에 필수 필드(title, til_markdown) 누락 → 422 til_generation_failed

@@ -49,10 +49,7 @@ public class TilGenerationJobProcessor implements AsyncJobProcessor {
     public void process(UUID jobId, UUID targetId) {
         auditedAsyncJobRunner.run(jobId, targetId, JobType.TIL_GENERATION, () -> {
             DailySummary summary = dailySummaryService.getSummary(targetId);
-            AiTilResponse response = tilGenerationService.generate(
-                    summary.getUser().getUserId(),
-                    summary.getTargetDate()
-            );
+            AiTilResponse response = tilGenerationService.generate(summary);
 
             dailySummaryService.updateGeneratedResult(
                     summary.getSummaryId(),

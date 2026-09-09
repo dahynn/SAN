@@ -4,6 +4,8 @@ import java.util.List;
 
 /** TIL 생성 원본 목록 응답 DTO */
 public record TilSourcesResponse(
-        List<TilSourceContentResponse> sources
+        List<TilSourceContentResponse> sources,
+        boolean evidenceSnapshot,
+        String evidenceScope
 ) {
 }

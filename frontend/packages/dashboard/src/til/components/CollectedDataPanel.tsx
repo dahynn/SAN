@@ -53,7 +53,9 @@ export function CollectedDataPanel({ sourcesQuery, recallCardsQuery, selectedTil
                 minute: '2-digit',
             }),
             excerpt: source.rawContent || source.sourceUrl || '',
-            tag: source.category?.categoryName ? `# ${source.category.categoryName}` : '',
+            tag: [source.referenceId, source.category?.categoryName ? `# ${source.category.categoryName}` : '']
+                .filter(Boolean)
+                .join(' · '),
             imageUrl: source.imageUrl ?? undefined,
             href: source.sourceUrl ?? undefined,
         }));
@@ -107,6 +109,16 @@ export function CollectedDataPanel({ sourcesQuery, recallCardsQuery, selectedTil
                     </div>
 
                     <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
+                        {selectedTil && !sourcesQuery.isPending && sourcesQuery.data?.evidenceSnapshot === false ? (
+                            <div className="rounded-xl border border-text-secondary/10 bg-text-primary/[0.03] px-4 py-3 text-sm leading-5 text-text-secondary">
+                                이 TIL은 근거 스냅샷 저장 전 생성되어, 실제 사용한 원문을 확인할 수 없습니다.
+                            </div>
+                        ) : null}
+                        {selectedTil && !sourcesQuery.isPending && sourcesQuery.data?.evidenceScope === 'TIL_INPUT_SNAPSHOT' ? (
+                            <div className="rounded-xl border border-text-secondary/10 bg-text-primary/[0.03] px-4 py-3 text-sm leading-5 text-text-secondary">
+                                `SRC-xx`는 이 TIL 생성에 입력된 카드 스냅샷입니다. 문장별 인용이나 사실 검증을 의미하지는 않습니다.
+                            </div>
+                        ) : null}
                         {sourcesQuery.isPending && selectedTil && !import.meta.env.DEV ? (
                             <div className="py-10 text-center text-sm italic text-text-secondary opacity-50">
                                 수집 데이터를 불러오는 중...

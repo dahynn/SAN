@@ -14,6 +14,7 @@ import com.san.api.domain.til.dto.response.TilGenerationJobResponse;
 import com.san.api.domain.til.dto.response.TilRecallCardsResponse;
 import com.san.api.domain.til.dto.response.TilResponse;
 import com.san.api.domain.til.entity.DailySummary;
+import com.san.api.domain.til.entity.TilSourceSnapshot;
 import com.san.api.domain.til.repository.DailySummaryRepository;
 import com.san.api.domain.user.entity.AuthProvider;
 import com.san.api.domain.user.entity.User;
@@ -64,6 +65,8 @@ class TilServiceTest {
     private S3PresignedUrlService s3PresignedUrlService;
     @Mock
     private AiEmbeddingClient aiEmbeddingClient;
+    @Mock
+    private TilSourceService tilSourceService;
 
     @InjectMocks
     private TilService tilService;
@@ -84,8 +87,10 @@ class TilServiceTest {
         LocalDate targetDate = LocalDate.of(2026, 5, 6);
         DailySummary summary = buildSummary(UUID.randomUUID(), user, targetDate, null, null);
         UUID jobId = UUID.randomUUID();
+        List<TilSourceSnapshot> snapshots = List.of(sourceSnapshot(UUID.randomUUID(), "스프링 트랜잭션", "원문"));
 
-        when(dailySummaryService.createSummary(userId, targetDate)).thenReturn(summary);
+        when(tilSourceService.captureSnapshots(userId, targetDate)).thenReturn(snapshots);
+        when(dailySummaryService.createSummary(userId, targetDate, snapshots)).thenReturn(summary);
         when(asyncJobManager.enqueueInCurrentTransaction(JobType.TIL_GENERATION, summary.getSummaryId())).thenReturn(jobId);
 
         TilGenerationJobResponse response = tilService.requestGeneration(userId, new TilGenerateRequest(targetDate));
@@ -94,7 +99,7 @@ class TilServiceTest {
         assertThat(response.jobId()).isEqualTo(jobId);
         assertThat(response.targetDate()).isEqualTo(targetDate);
         verify(dailySummaryRepository).acquireGenerationLock(userId);
-        verify(dailySummaryService).createSummary(userId, targetDate);
+        verify(dailySummaryService).createSummary(userId, targetDate, snapshots);
         verify(asyncJobManager).enqueueInCurrentTransaction(JobType.TIL_GENERATION, summary.getSummaryId());
     }
 
@@ -112,7 +117,7 @@ class TilServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", CommonErrorCode.DUPLICATE_RESOURCE);
         verify(dailySummaryRepository).acquireGenerationLock(userId);
-        verifyNoInteractions(dailySummaryService);
+        verifyNoInteractions(dailySummaryService, tilSourceService);
         verify(asyncJobManager, never()).enqueueInCurrentTransaction(any(), any());
     }
 
@@ -223,38 +228,52 @@ class TilServiceTest {
     }
 
     @Test
-    void getSources_convertsImageObjectKeyToImageUrl() {
+    void getSources_returnsGenerationSnapshotAndConvertsImageObjectKeyToImageUrl() {
         LocalDate targetDate = LocalDate.of(2026, 5, 6);
         DailySummary summary = buildSummary(summaryId, user, targetDate, "TIL", "content");
         String imageObjectKey = "scrap/images/%s/image.png".formatted(userId);
         String imageUrl = "https://bucket.s3.us-east-1.amazonaws.com/scrap/images/image.png?signature=test";
-        KnowledgeCard card = buildImageCard(UUID.randomUUID(), user, imageObjectKey);
+        TilSourceSnapshot snapshot = sourceSnapshot(UUID.randomUUID(), "이미지 카드", "image");
+        ReflectionTestUtils.setField(snapshot, "imageObjectKey", imageObjectKey);
+        ReflectionTestUtils.setField(summary, "sourceSnapshots", List.of(snapshot));
 
         when(dailySummaryRepository.findBySummaryIdWithUser(summaryId)).thenReturn(Optional.of(summary));
-        when(knowledgeCardRepository.findTilSourceCards(eq(userId), any(LocalDateTime.class), any(LocalDateTime.class)))
-                .thenReturn(List.of(card));
         when(s3PresignedUrlService.createDownloadPresignedUrl(imageObjectKey)).thenReturn(imageUrl);
 
         var response = tilService.getSources(summaryId, userId);
 
         assertThat(response.sources()).hasSize(1);
+        assertThat(response.sources().get(0).referenceId()).isEqualTo("SRC-01");
         assertThat(response.sources().get(0).imageUrl()).isEqualTo(imageUrl);
+        assertThat(response.evidenceSnapshot()).isTrue();
+        assertThat(response.evidenceScope()).isEqualTo("TIL_INPUT_SNAPSHOT");
+        verifyNoInteractions(knowledgeCardRepository);
     }
 
     @Test
-    void getSources_returnsNullImageUrlWhenImageObjectKeyIsBlank() {
+    void getSources_marksLegacyTilAsUnverifiableInsteadOfUsingNewerCards() {
         LocalDate targetDate = LocalDate.of(2026, 5, 6);
         DailySummary summary = buildSummary(summaryId, user, targetDate, "TIL", "content");
-        KnowledgeCard card = buildImageCard(UUID.randomUUID(), user, "   ");
 
         when(dailySummaryRepository.findBySummaryIdWithUser(summaryId)).thenReturn(Optional.of(summary));
-        when(knowledgeCardRepository.findTilSourceCards(eq(userId), any(LocalDateTime.class), any(LocalDateTime.class)))
-                .thenReturn(List.of(card));
 
         var response = tilService.getSources(summaryId, userId);
 
-        assertThat(response.sources()).hasSize(1);
-        assertThat(response.sources().get(0).imageUrl()).isNull();
+        assertThat(response.sources()).isEmpty();
+        assertThat(response.evidenceSnapshot()).isFalse();
+        assertThat(response.evidenceScope()).isEqualTo("UNAVAILABLE");
+        verifyNoInteractions(s3PresignedUrlService, knowledgeCardRepository);
+    }
+
+    @Test
+    void getSources_otherUser_cannotReadSnapshotReferences() {
+        DailySummary summary = buildSummary(summaryId, user, LocalDate.of(2026, 5, 6), "TIL", "content");
+        ReflectionTestUtils.setField(summary, "sourceSnapshots", List.of(sourceSnapshot(UUID.randomUUID(), "개인 카드", "개인 원문")));
+        when(dailySummaryRepository.findBySummaryIdWithUser(summaryId)).thenReturn(Optional.of(summary));
+
+        assertThatThrownBy(() -> tilService.getSources(summaryId, UUID.randomUUID()))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", TilErrorCode.SUMMARY_ACCESS_DENIED);
         verifyNoInteractions(s3PresignedUrlService);
     }
 
@@ -363,6 +382,13 @@ class TilServiceTest {
                 .build();
         ReflectionTestUtils.setField(card, "cardId", cardId);
         return card;
+    }
+
+    private TilSourceSnapshot sourceSnapshot(UUID cardId, String title, String rawContent) {
+        return new TilSourceSnapshot(
+                cardId, UUID.randomUUID(), title, SourceType.TEXT, rawContent, null, null,
+                UUID.randomUUID(), "테스트", LocalDateTime.of(2026, 5, 6, 10, 0), "text", rawContent
+        );
     }
 
     private CardTag buildCardTag(KnowledgeCard card, String tagName) {

@@ -1,6 +1,7 @@
 package com.san.api.domain.til.service;
 
 import com.san.api.domain.til.entity.DailySummary;
+import com.san.api.domain.til.entity.TilSourceSnapshot;
 import com.san.api.domain.til.repository.DailySummaryRepository;
 import com.san.api.domain.user.entity.User;
 import com.san.api.domain.user.repository.UserRepository;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 /** DailySummary 조회 및 생성 결과 저장 Service */
@@ -30,11 +32,11 @@ public class DailySummaryService {
      * @return 새로 생성된 DailySummary
      */
     @Transactional
-    public DailySummary createSummary(UUID userId, LocalDate targetDate) {
+    public DailySummary createSummary(UUID userId, LocalDate targetDate, List<TilSourceSnapshot> sourceSnapshots) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
 
-        return dailySummaryRepository.save(DailySummary.create(user, targetDate));
+        return dailySummaryRepository.save(DailySummary.create(user, targetDate, sourceSnapshots));
     }
 
     /**

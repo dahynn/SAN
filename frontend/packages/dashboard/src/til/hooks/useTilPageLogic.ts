@@ -27,6 +27,7 @@ const TIL_GENERATION_ERROR_MESSAGES = {
   DUPLICATE_RESOURCE: DUPLICATE_TIL_GENERATION_MESSAGE,
   DUPLICATE_TIL_GENERATION: DUPLICATE_TIL_GENERATION_MESSAGE,
 };
+const SAFE_TIL_GENERATION_FAILURE_MESSAGE = 'TIL 생성에 실패했습니다. 원본은 보존되어 있으니 잠시 후 다시 시도해 주세요.';
 
 export function useTilPageLogic(): TilPageLogic {
   const queryClient = useQueryClient();
@@ -316,11 +317,18 @@ function getGenerationMessage(
 ) {
   if (error) return getTilGenerationErrorMessage(error);
   if (error) return getApiErrorMessage(error, 'TIL 생성 요청에 실패했습니다.');
-  if (status === 'FAILED') return errorMessage ?? 'TIL 생성 작업이 실패했습니다.';
+  if (status === 'FAILED') return getSafeGenerationFailureMessage(errorMessage);
   if (status === 'COMPLETED') return 'TIL 생성이 완료되었습니다.';
   if (status === 'PROCESSING') return 'AI가 TIL을 생성하고 있습니다.';
   if (status === 'PENDING' || jobId) return 'TIL 생성 작업이 등록되었습니다.';
   return null;
+}
+
+function getSafeGenerationFailureMessage(errorMessage: string | null | undefined) {
+  if (errorMessage?.toLowerCase().includes('timeout')) {
+    return 'AI 응답 시간이 초과되었습니다. 원본은 보존되어 있으니 잠시 후 다시 시도해 주세요.';
+  }
+  return SAFE_TIL_GENERATION_FAILURE_MESSAGE;
 }
 
 function getCommitMessage(

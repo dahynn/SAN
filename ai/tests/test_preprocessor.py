@@ -1,4 +1,5 @@
 import asyncio
+import os
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -6,25 +7,26 @@ import pytest
 
 from app.core.exceptions import AIProcessingError, ContentValidationError
 from app.schemas.common import InputType
-from app.services.preprocessor import preprocess
+from app.services.preprocessor import _validate_url, preprocess
 
 _URL_FIXTURE = Path("tests/fixtures/test_url.txt")
 _IMAGE_URL_FIXTURE = Path("tests/fixtures/test_image_url.txt")
 
 skip_if_no_url = pytest.mark.skipif(
-    not _URL_FIXTURE.exists() or not _URL_FIXTURE.read_text().strip(),
-    reason="tests/fixtures/test_url.txt 없거나 비어있음 — URL 통합 테스트 스킵",
+    os.getenv("RUN_NETWORK_TESTS") != "1" or not _URL_FIXTURE.exists() or not _URL_FIXTURE.read_text().strip(),
+    reason="RUN_NETWORK_TESTS=1과 URL fixture가 있어야 하는 선택적 네트워크 통합 테스트",
 )
 
 skip_if_no_image_url = pytest.mark.skipif(
-    not _IMAGE_URL_FIXTURE.exists() or not _IMAGE_URL_FIXTURE.read_text().strip(),
-    reason="tests/fixtures/test_image_url.txt 없거나 비어있음 — 이미지 통합 테스트 스킵",
+    os.getenv("RUN_NETWORK_TESTS") != "1" or not _IMAGE_URL_FIXTURE.exists() or not _IMAGE_URL_FIXTURE.read_text().strip(),
+    reason="RUN_NETWORK_TESTS=1과 이미지 URL fixture가 있어야 하는 선택적 네트워크 통합 테스트",
 )
 
 
 def _mock_image_stream(mock_client: AsyncMock) -> MagicMock:
     mock_response = MagicMock()
     mock_response.raise_for_status = MagicMock()
+    mock_response.is_redirect = False
 
     mock_stream = MagicMock()
     mock_stream.__aenter__ = AsyncMock(return_value=mock_response)
@@ -71,6 +73,12 @@ def test_url_no_scheme_raises_invalid_url() -> None:
         asyncio.run(preprocess(InputType.url, "example.com/article"))
     assert exc.value.code == "invalid_url"
 
+
+def test_url_invalid_port_raises_invalid_url() -> None:
+    with pytest.raises(ContentValidationError) as exc:
+        asyncio.run(preprocess(InputType.url, "https://example.com:99999/article"))
+    assert exc.value.code == "invalid_url"
+
 # URL이 유효하지만 접근할 수 없는 경우 422 상태 코드와 "url_fetch_failed" 오류 코드를 반환하는지 검증.
 def test_url_empty_raises_missing_content() -> None:
     with pytest.raises(ContentValidationError) as exc:
@@ -79,7 +87,8 @@ def test_url_empty_raises_missing_content() -> None:
 
 # URL이 유효하지만 요청 중 오류가 발생하는 경우 422 상태 코드와 "url_fetch_failed" 오류 코드를 반환하는지 검증.
 def test_url_fetch_failure_raises_url_fetch_failed() -> None:
-    with patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
+    with patch("app.services.preprocessor._resolve_public_host", new=AsyncMock()), \
+         patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client_cls.return_value.__aenter__.return_value = mock_client
         mock_client.get.side_effect = Exception("connection refused")
@@ -94,7 +103,9 @@ def test_url_empty_body_raises_url_content_empty() -> None:
     mock_response.raise_for_status = MagicMock()
     mock_response.text = "<html></html>"
 
-    with patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
+    mock_response.is_redirect = False
+    with patch("app.services.preprocessor._resolve_public_host", new=AsyncMock()), \
+         patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client_cls.return_value.__aenter__.return_value = mock_client
         mock_client.get.return_value = mock_response
@@ -110,7 +121,9 @@ def test_url_success_returns_body() -> None:
     mock_response.raise_for_status = MagicMock()
     mock_response.text = "<html><body><p>본문 텍스트</p></body></html>"
 
-    with patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
+    mock_response.is_redirect = False
+    with patch("app.services.preprocessor._resolve_public_host", new=AsyncMock()), \
+         patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client_cls.return_value.__aenter__.return_value = mock_client
         mock_client.get.return_value = mock_response
@@ -136,7 +149,8 @@ def test_image_empty_raises_missing_content() -> None:
 
 # 이미지 접근 실패
 def test_image_access_failure_raises_image_access_failed() -> None:
-    with patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
+    with patch("app.services.preprocessor._resolve_public_host", new=AsyncMock()), \
+         patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client_cls.return_value.__aenter__.return_value = mock_client
         mock_client.stream = MagicMock(side_effect=Exception("403 Forbidden"))
@@ -147,7 +161,8 @@ def test_image_access_failure_raises_image_access_failed() -> None:
 
 # 이미지 분석 실패
 def test_image_analysis_failure_raises_image_analysis_failed() -> None:
-    with patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
+    with patch("app.services.preprocessor._resolve_public_host", new=AsyncMock()), \
+         patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client_cls.return_value.__aenter__.return_value = mock_client
         _mock_image_stream(mock_client)
@@ -165,7 +180,8 @@ def test_image_analysis_failure_raises_image_analysis_failed() -> None:
 
 # 이미지 분석 성공
 def test_image_success_returns_description() -> None:
-    with patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
+    with patch("app.services.preprocessor._resolve_public_host", new=AsyncMock()), \
+         patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client_cls.return_value.__aenter__.return_value = mock_client
         _mock_image_stream(mock_client)
@@ -181,8 +197,46 @@ def test_image_success_returns_description() -> None:
     mock_client.stream.assert_called_once_with(
         "GET",
         "https://s3.amazonaws.com/bucket/image.png",
-        follow_redirects=True,
+        follow_redirects=False,
     )
+
+
+@pytest.mark.parametrize("url", [
+    "http://localhost/admin",
+    "http://127.0.0.1/",
+    "http://10.0.0.1/",
+    "http://169.254.169.254/latest/meta-data/",
+    "http://172.16.0.1/",
+    "http://192.168.1.1/",
+    "http://[::1]/",
+    "http://[fd00::1]/",
+])
+def test_private_or_reserved_urls_are_blocked_before_fetch(url: str) -> None:
+    with pytest.raises(ContentValidationError) as exc:
+        asyncio.run(preprocess(InputType.url, url))
+    assert exc.value.code == "blocked_url"
+
+
+def test_public_literal_ip_is_allowed_by_url_policy() -> None:
+    asyncio.run(_validate_url("https://93.184.216.34/article"))
+
+
+def test_hostname_with_private_dns_result_is_blocked() -> None:
+    with patch("app.services.preprocessor.asyncio.get_running_loop") as loop_factory:
+        loop_factory.return_value.getaddrinfo = AsyncMock(return_value=[
+            (None, None, None, None, ("10.0.0.8", 443)),
+        ])
+        with pytest.raises(ContentValidationError) as exc:
+            asyncio.run(_validate_url("https://public-looking.example/article"))
+    assert exc.value.code == "blocked_url"
+
+
+def test_public_hostname_dns_result_is_allowed() -> None:
+    with patch("app.services.preprocessor.asyncio.get_running_loop") as loop_factory:
+        loop_factory.return_value.getaddrinfo = AsyncMock(return_value=[
+            (None, None, None, None, ("93.184.216.34", 443)),
+        ])
+        asyncio.run(_validate_url("https://public.example/article"))
 
 
 # ── 통합 테스트 (실제 네트워크 + 실제 본문 추출) ──────────────────────────────────
