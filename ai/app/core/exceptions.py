@@ -3,6 +3,17 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 
+_SAFE_AI_MESSAGES = {
+    "url_fetch_failed": "외부 문서를 가져오지 못했습니다. 공개적으로 접근 가능한 URL인지 확인해 주세요.",
+    "url_content_empty": "외부 문서에서 분석할 본문을 찾지 못했습니다.",
+    "image_access_failed": "이미지에 접근하지 못했습니다. 공개적으로 접근 가능한 URL인지 확인해 주세요.",
+    "image_analysis_failed": "이미지 분석에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    "til_summarize_failed": "TIL 원문 요약에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    "til_generation_failed": "TIL 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    "embedding_failed": "임베딩 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+}
+
+
 class AIProcessingError(Exception):
     """LLM 호출, 임베딩 생성 등 AI 처리 단계에서 발생하는 오류. 422로 응답한다."""
 
@@ -64,7 +75,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def ai_processing_exception_handler(request: Request, exc: AIProcessingError):
         return JSONResponse(
             status_code=422,
-            content={"error": exc.code, "message": exc.message},
+            content={"error": exc.code, "message": _SAFE_AI_MESSAGES.get(exc.code, "AI 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.")},
         )
 
     # 명시적으로 처리되지 않은 예외는 500 상태 코드로 반환한다.

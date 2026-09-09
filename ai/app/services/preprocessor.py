@@ -1,5 +1,7 @@
 import asyncio
-from urllib.parse import urlparse
+import ipaddress
+import socket
+from urllib.parse import urljoin, urlparse
 
 import httpx
 import trafilatura
@@ -17,11 +19,51 @@ _HEADERS = {
     )
 }
 
+_ALLOWED_SCHEMES = {"http", "https"}
+_LOCAL_HOSTNAMES = {"localhost", "localhost.localdomain"}
+
+
+async def _resolve_public_host(hostname: str, port: int | None) -> None:
+    """요청 직전 DNS 결과가 모두 전역 IP인지 확인한다.
+
+    DNS 재바인딩의 완전한 방어는 연결 계층의 IP 고정이 필요하므로, 운영 환경에서는
+    egress proxy 또는 네트워크 정책을 함께 적용해야 한다.
+    """
+    try:
+        addresses = await asyncio.get_running_loop().getaddrinfo(
+            hostname,
+            port or 443,
+            type=socket.SOCK_STREAM,
+        )
+    except socket.gaierror as exc:
+        raise ContentValidationError(code="invalid_url", message="공개 URL의 호스트를 확인할 수 없습니다.") from exc
+
+    resolved_ips = {item[4][0] for item in addresses}
+    if not resolved_ips or any(not ipaddress.ip_address(address).is_global for address in resolved_ips):
+        raise ContentValidationError(code="blocked_url", message="내부망 또는 예약된 주소는 사용할 수 없습니다.")
+
 # 전처리 모듈은 입력된 콘텐츠 유형에 따라 텍스트, URL, 이미지에 대한 전처리를 수행. URL의 경우 본문을 추출, 이미지의 경우 LLM을 활용하여 설명 텍스트로 변환.
-def _validate_url(content: str) -> None:
+async def _validate_url(content: str) -> None:
     parsed = urlparse(content)
-    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+    if parsed.scheme not in _ALLOWED_SCHEMES or not parsed.hostname or parsed.username or parsed.password:
         raise ContentValidationError(code="invalid_url", message="유효하지 않은 URL입니다.")
+
+    hostname = parsed.hostname.rstrip(".").lower()
+    if hostname in _LOCAL_HOSTNAMES or hostname.endswith(".localhost"):
+        raise ContentValidationError(code="blocked_url", message="내부망 또는 예약된 주소는 사용할 수 없습니다.")
+
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise ContentValidationError(code="invalid_url", message="유효하지 않은 URL 포트입니다.") from exc
+
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        await _resolve_public_host(hostname, port)
+    else:
+        if not address.is_global:
+            raise ContentValidationError(code="blocked_url", message="내부망 또는 예약된 주소는 사용할 수 없습니다.")
 
 # 텍스트 콘텐츠는 공백을 제거한 후 비어있지 않은지 확인. 유효하지 않은 경우 ContentValidationError를 발생.
 def _preprocess_text(content: str) -> str:
@@ -32,12 +74,22 @@ def _preprocess_text(content: str) -> str:
 
 # URL 콘텐츠는 유효한 URL인지 검증한 후 HTTP GET 요청을 통해 페이지를 가져와 trafilatura로 본문을 추출. 실패 시 AIProcessingError를 발생.
 async def _preprocess_url(content: str) -> str:
-    _validate_url(content)
-
     try:
-        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, headers=_HEADERS) as client:
-            response = await client.get(content)
-            response.raise_for_status()
+        async with httpx.AsyncClient(timeout=15.0, headers=_HEADERS) as client:
+            current_url = content
+            for _ in range(4):
+                await _validate_url(current_url)
+                response = await client.get(current_url, follow_redirects=False)
+                if response.is_redirect:
+                    location = response.headers.get("location")
+                    if not location:
+                        raise AIProcessingError(code="url_fetch_failed", message="리디렉션 대상이 없습니다.")
+                    current_url = urljoin(current_url, location)
+                    continue
+                response.raise_for_status()
+                break
+            else:
+                raise AIProcessingError(code="url_fetch_failed", message="리디렉션 횟수를 초과했습니다.")
     except ContentValidationError:
         raise
     except Exception as e:
@@ -56,11 +108,13 @@ async def _preprocess_url(content: str) -> str:
 
 # 이미지 콘텐츠는 유효한 URL인지 검증한 후 HTTP GET stream으로 접근 가능 여부를 확인. 이후 LLMClient의 call_with_image 메서드를 사용하여 이미지 설명 텍스트를 생성. 실패 시 AIProcessingError를 발생.
 async def _preprocess_image(content: str) -> str:
-    _validate_url(content)
+    await _validate_url(content)
 
     try:
         async with httpx.AsyncClient(timeout=10.0, headers=_HEADERS) as client:
-            async with client.stream("GET", content, follow_redirects=True) as response:
+            async with client.stream("GET", content, follow_redirects=False) as response:
+                if response.is_redirect:
+                    raise ContentValidationError(code="blocked_url", message="이미지 URL의 리디렉션은 허용되지 않습니다.")
                 response.raise_for_status()
     except ContentValidationError:
         raise

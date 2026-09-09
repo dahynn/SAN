@@ -16,6 +16,7 @@ import com.san.api.domain.til.dto.response.TilResponse;
 import com.san.api.domain.til.dto.response.TilSourceContentResponse;
 import com.san.api.domain.til.dto.response.TilSourcesResponse;
 import com.san.api.domain.til.entity.DailySummary;
+import com.san.api.domain.til.entity.TilSourceSnapshot;
 import com.san.api.domain.til.repository.DailySummaryRepository;
 import com.san.api.global.async.entity.JobStatus;
 import com.san.api.global.async.entity.JobType;
@@ -48,6 +49,7 @@ public class TilService {
     private final KnowledgeCardRepository knowledgeCardRepository;
     private final S3PresignedUrlService s3PresignedUrlService;
     private final AiEmbeddingClient aiEmbeddingClient;
+    private final TilSourceService tilSourceService;
 
     /**
      * TIL 생성 비동기 작업 등록
@@ -61,7 +63,8 @@ public class TilService {
         dailySummaryRepository.acquireGenerationLock(userId);
         validateNoActiveGenerationJob(userId);
 
-        DailySummary summary = dailySummaryService.createSummary(userId, request.targetDate());
+        List<TilSourceSnapshot> sourceSnapshots = tilSourceService.captureSnapshots(userId, request.targetDate());
+        DailySummary summary = dailySummaryService.createSummary(userId, request.targetDate(), sourceSnapshots);
         UUID jobId = asyncJobManager.enqueueInCurrentTransaction(JobType.TIL_GENERATION, summary.getSummaryId());
 
         return new TilGenerationJobResponse(
@@ -144,16 +147,15 @@ public class TilService {
                 .orElseThrow(() -> new BusinessException(TilErrorCode.SUMMARY_NOT_FOUND));
         validateSummaryOwner(summary, userId);
 
-        List<TilSourceContentResponse> sources = knowledgeCardRepository.findTilSourceCards(
-                        userId,
-                        summary.getTargetDate().atStartOfDay(),
-                        summary.getTargetDate().plusDays(1).atStartOfDay()
-                )
-                .stream()
-                .map(this::toSourceItem)
+        List<TilSourceContentResponse> sources = java.util.stream.IntStream.range(0, summary.getSourceSnapshots().size())
+                .mapToObj(index -> toSourceItem(summary.getSourceSnapshots().get(index), index + 1))
                 .toList();
 
-        return new TilSourcesResponse(sources);
+        return new TilSourcesResponse(
+                sources,
+                !sources.isEmpty(),
+                sources.isEmpty() ? "UNAVAILABLE" : "TIL_INPUT_SNAPSHOT"
+        );
     }
 
     /**
@@ -187,26 +189,26 @@ public class TilService {
     }
 
     /**
-     * 지식카드를 TIL 생성 원본 표시용 응답으로 변환
+     * 스냅샷을 TIL 생성 원본 표시용 응답으로 변환
      *
-     * @param card TIL 생성에 사용된 지식카드
+     * @param source TIL 생성 시점의 원본 스냅샷
      * @return TIL 생성 원본 단건 응답
      */
-    private TilSourceContentResponse toSourceItem(KnowledgeCard card) {
-        Scrap scrap = card.getScrap();
+    private TilSourceContentResponse toSourceItem(TilSourceSnapshot source, int sourceOrder) {
         return new TilSourceContentResponse(
-                card.getCardId(),
-                scrap.getScrapId(),
-                card.getTitle(),
-                scrap.getSourceType(),
-                scrap.getRawContent(),
-                scrap.getSourceUrl(),
-                createImageUrl(scrap.getImageObjectKey()),
+                "SRC-%02d".formatted(sourceOrder),
+                source.getCardId(),
+                source.getScrapId(),
+                source.getTitle(),
+                source.getSourceType(),
+                source.getRawContent(),
+                source.getSourceUrl(),
+                createImageUrl(source.getImageObjectKey()),
                 new CategoryResponse(
-                        card.getCategory().getCategoryId(),
-                        card.getCategory().getCategoryName()
+                        source.getCategoryId(),
+                        source.getCategoryName()
                 ),
-                card.getCreatedAt()
+                source.getSourceCreatedAt()
         );
     }
 

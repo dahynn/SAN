@@ -6,6 +6,8 @@ import com.san.api.domain.knowledge.repository.KnowledgeCardRepository;
 import com.san.api.domain.scrap.entity.Scrap;
 import com.san.api.domain.scrap.entity.SourceType;
 import com.san.api.domain.til.dto.response.TilGenerationSourceResponse;
+import com.san.api.domain.til.entity.DailySummary;
+import com.san.api.domain.til.entity.TilSourceSnapshot;
 import com.san.api.domain.user.entity.AuthProvider;
 import com.san.api.domain.user.entity.User;
 import com.san.api.global.exception.BusinessException;
@@ -163,6 +165,36 @@ class TilSourceServiceTest {
         assertThatThrownBy(() -> tilSourceService.getSource(userId, LocalDate.of(2026, 5, 12)))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", TilErrorCode.INVALID_TIL_SOURCE_CONTENT);
+    }
+
+    @Test
+    void captureSnapshots_keepsOriginalCardEvidenceForAsyncGeneration() {
+        UUID userId = UUID.randomUUID();
+        User user = buildUser(userId);
+        Scrap scrap = Scrap.builder()
+                .user(user)
+                .sourceType(SourceType.TEXT)
+                .rawContent("원문 근거")
+                .refinedContent("생성에 전달한 정제 원문")
+                .build();
+        Category category = Category.builder().user(user).categoryName("Backend").build();
+        KnowledgeCard card = KnowledgeCard.builder().scrap(scrap).category(category).title("트랜잭션").summary("요약").build();
+        UUID cardId = UUID.randomUUID();
+        ReflectionTestUtils.setField(card, "cardId", cardId);
+
+        when(knowledgeCardRepository.findTilSourceCards(eq(userId), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(List.of(card));
+
+        List<TilSourceSnapshot> snapshots = tilSourceService.captureSnapshots(userId, LocalDate.of(2026, 5, 12));
+        DailySummary summary = DailySummary.create(user, LocalDate.of(2026, 5, 12), snapshots);
+
+        assertThat(snapshots).singleElement().satisfies(snapshot -> {
+            assertThat(snapshot.getCardId()).isEqualTo(cardId);
+            assertThat(snapshot.getRawContent()).isEqualTo("원문 근거");
+            assertThat(snapshot.getAiInputContent()).isEqualTo("생성에 전달한 정제 원문");
+        });
+        assertThat(tilSourceService.toAiContents(summary)).singleElement()
+                .satisfies(content -> assertThat(content.content()).isEqualTo("생성에 전달한 정제 원문"));
     }
 
     private User buildUser(UUID userId) {

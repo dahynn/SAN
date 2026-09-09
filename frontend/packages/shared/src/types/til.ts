@@ -27,6 +27,7 @@ export interface TilResponse {
 }
 
 export interface TilSourceContentResponse {
+  referenceId: string;
   cardId: string;
   scrapId: string;
   title: string;
@@ -44,6 +45,8 @@ export interface TilRecallCardsResponse {
 
 export interface TilSourcesResponse {
   sources: TilSourceContentResponse[];
+  evidenceSnapshot: boolean;
+  evidenceScope: 'TIL_INPUT_SNAPSHOT' | 'UNAVAILABLE';
 }
 
 export type TilGithubCommitStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';

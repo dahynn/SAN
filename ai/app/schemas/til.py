@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.common import InputType
 
@@ -11,6 +11,8 @@ class TilContent(BaseModel):
     content: str = Field(
         description="input_type에 따라 URL 문자열, 본문 텍스트, 이미지 URL 중 하나",
         examples=["https://example.com/article"],
+        min_length=1,
+        max_length=12000,
     )
 
 
@@ -19,6 +21,8 @@ class TilContent(BaseModel):
 class TilRequest(BaseModel):
     contents: list[TilContent] = Field(
         description="TIL을 구성할 카드 목록. 1개 이상 필요",
+        min_length=1,
+        max_length=20,
     )
     generate_til: bool = Field(
         description="true이면 TIL 마크다운을 생성해 반환. false이면 임베딩만 반환",
@@ -42,6 +46,12 @@ class TilRequest(BaseModel):
             ]
         }
     )
+
+    @model_validator(mode="after")
+    def validate_total_content_length(self) -> "TilRequest":
+        if sum(len(item.content) for item in self.contents) > 60000:
+            raise ValueError("contents의 총 길이는 60000자를 초과할 수 없습니다.")
+        return self
 
 
 class TilResponse(BaseModel):

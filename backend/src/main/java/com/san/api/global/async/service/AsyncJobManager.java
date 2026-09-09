@@ -90,6 +90,17 @@ public class AsyncJobManager {
         return findJob(jobId);
     }
 
+    /** 요청자에게 속한 비동기 작업만 상태 조회에 사용할 수 있다. */
+    @Transactional(readOnly = true)
+    public AsyncJob getJobForUser(UUID jobId, UUID userId) {
+        AsyncJob job = findJob(jobId);
+        UUID actorUserId = job.getAuditContext() == null ? null : job.getAuditContext().getActorUserId();
+        if (actorUserId == null || !actorUserId.equals(userId)) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+        }
+        return job;
+    }
+
     @Transactional
     public void markProcessing(UUID jobId) {
         findJob(jobId).updateStatus(JobStatus.PROCESSING);

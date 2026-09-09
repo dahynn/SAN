@@ -9,6 +9,7 @@ import java.util.UUID;
 
 /** TIL 생성 원본 단건 응답 DTO */
 public record TilSourceContentResponse(
+        String referenceId,
         UUID cardId,
         UUID scrapId,
         String title,

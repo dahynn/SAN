@@ -9,11 +9,13 @@ from app.services.preprocessor import preprocess
 _BLOCK_SEPARATOR = "\n\n---\n\n"
 _BATCH_SIZE = 3
 _REQUIRED_KEYS = {"title", "til_markdown"}
+_SOURCE_OPEN = "<source-content>"
+_SOURCE_CLOSE = "</source-content>"
 
 
 async def _summarize(llm: LLMClient, preprocessed: str) -> str:
     return await llm.acall(
-        prompt=f"{TIL_SUMMARY_PROMPT}\n\n[입력 콘텐츠]\n{preprocessed}",
+        prompt=f"{TIL_SUMMARY_PROMPT}\n\n{_SOURCE_OPEN}\n{preprocessed}\n{_SOURCE_CLOSE}",
         error_code="til_summarize_failed",
     )
 
@@ -21,7 +23,7 @@ async def _summarize(llm: LLMClient, preprocessed: str) -> str:
 async def _reduce(llm: LLMClient, texts: list[str]) -> dict:
     joined = _BLOCK_SEPARATOR.join(texts)
     result = await llm.acall_json(
-        prompt=f"{TIL_GROUP_PROMPT}\n\n[요약 콘텐츠]\n{joined}",
+        prompt=f"{TIL_GROUP_PROMPT}\n\n<source-summaries>\n{joined}\n</source-summaries>",
         error_code="til_generation_failed",
     )
     if not _REQUIRED_KEYS.issubset(result):

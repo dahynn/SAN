@@ -6,8 +6,11 @@ import com.san.api.domain.scrap.entity.Scrap;
 import com.san.api.domain.scrap.entity.SourceType;
 import com.san.api.domain.til.dto.response.TilGenerationSourceContentResponse;
 import com.san.api.domain.til.dto.response.TilGenerationSourceResponse;
+import com.san.api.domain.til.entity.DailySummary;
+import com.san.api.domain.til.entity.TilSourceSnapshot;
 import com.san.api.global.exception.BusinessException;
 import com.san.api.global.exception.errorcode.TilErrorCode;
+import com.san.api.global.external.ai.dto.request.AiTilContentRequest;
 import com.san.api.global.external.s3.service.S3PresignedUrlService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -48,6 +51,50 @@ public class TilSourceService {
         }
 
         return new TilGenerationSourceResponse(targetDate, contents);
+    }
+
+    /** TIL 등록 시점의 카드·원문 근거를 고정한다. */
+    @Transactional(readOnly = true)
+    public List<TilSourceSnapshot> captureSnapshots(UUID userId, LocalDate targetDate) {
+        LocalDateTime startAt = targetDate.atStartOfDay();
+        LocalDateTime endAt = targetDate.plusDays(1).atStartOfDay();
+        List<TilSourceSnapshot> snapshots = knowledgeCardRepository.findTilSourceCards(userId, startAt, endAt).stream()
+                .map(this::toSnapshot)
+                .toList();
+        if (snapshots.isEmpty()) {
+            throw new BusinessException(TilErrorCode.EMPTY_TIL_SOURCE);
+        }
+        return snapshots;
+    }
+
+    /** 고정된 스냅샷에서만 비동기 AI 입력을 재구성한다. */
+    @Transactional(readOnly = true)
+    public List<AiTilContentRequest> toAiContents(DailySummary summary) {
+        if (summary.getSourceSnapshots().isEmpty()) {
+            throw new BusinessException(TilErrorCode.EMPTY_TIL_SOURCE);
+        }
+        return summary.getSourceSnapshots().stream()
+                .map(snapshot -> new AiTilContentRequest(snapshot.getAiInputType(), snapshot.getAiInputContent()))
+                .toList();
+    }
+
+    private TilSourceSnapshot toSnapshot(KnowledgeCard card) {
+        Scrap scrap = card.getScrap();
+        String inputType = "text";
+        String inputContent = firstNotBlank(scrap.getRefinedContent(), scrap.getRawContent());
+        if (isBlank(scrap.getRefinedContent()) && scrap.getSourceType() == SourceType.LINK) {
+            inputType = "url";
+            inputContent = firstNotBlank(scrap.getSourceUrl(), scrap.getRawContent());
+        }
+        if (isBlank(inputContent)) {
+            throw new BusinessException(TilErrorCode.INVALID_TIL_SOURCE_CONTENT);
+        }
+        return new TilSourceSnapshot(
+                card.getCardId(), scrap.getScrapId(), card.getTitle(), scrap.getSourceType(),
+                scrap.getRawContent(), scrap.getSourceUrl(), scrap.getImageObjectKey(),
+                card.getCategory().getCategoryId(), card.getCategory().getCategoryName(), card.getCreatedAt(),
+                inputType, inputContent.trim()
+        );
     }
 
     /**

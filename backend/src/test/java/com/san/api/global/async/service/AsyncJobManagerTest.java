@@ -3,9 +3,12 @@ package com.san.api.global.async.service;
 import com.san.api.global.async.entity.AsyncJob;
 import com.san.api.global.async.entity.JobType;
 import com.san.api.global.async.repository.AsyncJobRepository;
+import com.san.api.global.audit.context.AuditContextSnapshot;
 import com.san.api.global.audit.context.AuditRequestContext;
 import com.san.api.global.audit.context.AuditRequestContextHolder;
 import com.san.api.global.audit.context.AuditRequesterType;
+import com.san.api.global.exception.BusinessException;
+import com.san.api.global.exception.errorcode.CommonErrorCode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -14,9 +17,11 @@ import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -77,5 +82,23 @@ class AsyncJobManagerTest {
         assertThat(savedJob.getAuditContext().getActorUserId()).isNull();
         assertThat(savedJob.getAuditContext().getRequestedByType()).isEqualTo(AuditRequesterType.SCHEDULER);
         assertThat(savedJob.getAuditContext().getRequestMetadata()).containsEntry("trigger", "orphan-recovery");
+    }
+
+    @Test
+    void getJobForUser_rejectsAnotherUsersJob() {
+        UUID ownerId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+        UUID jobId = UUID.randomUUID();
+        AsyncJob job = AsyncJob.builder()
+                .jobType(JobType.TIL_GENERATION)
+                .targetId(UUID.randomUUID())
+                .auditContext(AuditContextSnapshot.builder().actorUserId(ownerId).build())
+                .build();
+        org.springframework.test.util.ReflectionTestUtils.setField(job, "jobId", jobId);
+        when(asyncJobRepository.findById(jobId)).thenReturn(Optional.of(job));
+
+        assertThatThrownBy(() -> asyncJobManager.getJobForUser(jobId, otherUserId))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CommonErrorCode.UNAUTHORIZED);
     }
 }
