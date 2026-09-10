@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, RotateCcw } from 'lucide-react';
 import type {
+    AsyncJobStatusResponse,
     RecallQuizResponse,
     RecallQuizType,
     TilResponse,
@@ -9,8 +10,8 @@ import type {
 } from '@san/shared';
 import type { TilRecallCardsQuery, TilRecallQuizzesQuery, TilSourcesQuery } from '../types';
 import { CollectedDataCard, type CollectedDataItem } from './CollectedDataCard';
-import { useRecallQuizGenerateMutation } from '../hooks/useTilMutations';
-import { tilKeys, useTilAsyncJobStatus, useTilRecallQuizzes } from '../hooks/useTilQueries';
+import { useRecallQuizGenerateMutation, useTilGenerationRetryMutation } from '../hooks/useTilMutations';
+import { tilKeys, useTilAsyncJobStatus, useTilGenerationHistory, useTilRecallQuizzes } from '../hooks/useTilQueries';
 import { RecallHistory } from './RecallHistory';
 import { RecallQuizModal } from './RecallQuizModal';
 
@@ -42,6 +43,11 @@ export function CollectedDataPanel({ sourcesQuery, recallCardsQuery, selectedTil
     const sources = sourcesQuery.data?.sources ?? EMPTY_SOURCES;
     const recallCount = recallCardsQuery.data?.recallCards.length ?? 0;
     const recallQuizzesQuery = useTilRecallQuizzes(selectedTil?.targetDate, quizType, Boolean(selectedTil));
+    const generationHistoryQuery = useTilGenerationHistory(selectedTil?.summaryId);
+    const queryClient = useQueryClient();
+    const retryGenerationMutation = useTilGenerationRetryMutation(() => {
+        void queryClient.invalidateQueries({ queryKey: tilKeys.generationHistory(selectedTil?.summaryId) });
+    });
 
     const items: CollectedDataItem[] = useMemo(() => {
         const baseItems = sources.map((source) => ({
@@ -126,6 +132,16 @@ export function CollectedDataPanel({ sourcesQuery, recallCardsQuery, selectedTil
                                     : 'AI 입력 보호 기록: 개인정보 패턴은 감지되지 않았습니다.'}
                             </div>
                         ) : null}
+                        {selectedTil && generationHistoryQuery.data?.length ? (
+                            <TilGenerationHistory
+                                jobs={generationHistoryQuery.data}
+                                retryPending={retryGenerationMutation.isPending}
+                                onRetry={(jobId) => {
+                                    const confirmed = window.confirm('기존에 마스킹된 입력 스냅샷으로 TIL 생성을 다시 시도할까요?');
+                                    if (confirmed) retryGenerationMutation.mutate(jobId);
+                                }}
+                            />
+                        ) : null}
                         {sourcesQuery.isPending && selectedTil && !import.meta.env.DEV ? (
                             <div className="py-10 text-center text-sm italic text-text-secondary opacity-50">
                                 수집 데이터를 불러오는 중...
@@ -152,6 +168,50 @@ export function CollectedDataPanel({ sourcesQuery, recallCardsQuery, selectedTil
             )}
         </aside>
     );
+}
+
+function TilGenerationHistory({
+    jobs,
+    retryPending,
+    onRetry,
+}: {
+    jobs: AsyncJobStatusResponse[];
+    retryPending: boolean;
+    onRetry: (jobId: string) => void;
+}) {
+    return (
+        <section className="rounded-xl border border-text-secondary/10 bg-text-primary/[0.03] px-4 py-3 text-sm text-text-secondary">
+            <div className="mb-2 font-medium text-text-primary">AI 생성 실행 기록</div>
+            <ul className="space-y-2">
+                {jobs.slice(0, 5).map((job) => (
+                    <li key={job.jobId} className="flex items-center justify-between gap-3">
+                        <span>{formatJobStatus(job.status)} · {formatJobTime(job.completedAt ?? job.startedAt ?? job.createdAt)}</span>
+                        {job.status === 'FAILED' ? (
+                            <button
+                                type="button"
+                                disabled={retryPending}
+                                onClick={() => onRetry(job.jobId)}
+                                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-action-accent transition hover:bg-action-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <RotateCcw size={12} /> 다시 시도
+                            </button>
+                        ) : null}
+                    </li>
+                ))}
+            </ul>
+        </section>
+    );
+}
+
+function formatJobStatus(status: string) {
+    if (status === 'COMPLETED') return '완료';
+    if (status === 'FAILED') return '실패';
+    if (status === 'PROCESSING') return '처리 중';
+    return '대기 중';
+}
+
+function formatJobTime(value: string) {
+    return new Date(value).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function ReviewStatusSummary({

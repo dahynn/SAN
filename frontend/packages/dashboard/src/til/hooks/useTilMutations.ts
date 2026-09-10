@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import type {
+  AsyncJobStatusResponse,
   RecallQuizGenerateRequest,
   RecallQuizGenerationJobResponse,
   RecallQuizSubmitRequest,
@@ -9,7 +10,14 @@ import type {
   TilResponse,
   TilUpdateRequest,
 } from '@san/shared';
-import { recallApi, tilApi } from '@dashboard/api/client';
+import { asyncJobsApi, recallApi, tilApi } from '@dashboard/api/client';
+
+export function useTilGenerationRetryMutation(onSuccess?: (response: AsyncJobStatusResponse) => void) {
+  return useMutation({
+    mutationFn: (jobId: string) => asyncJobsApi.retryTilGeneration(jobId),
+    onSuccess,
+  });
+}
 
 interface UseTilGenerateMutationOptions {
   targetDate: string;

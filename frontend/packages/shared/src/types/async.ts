@@ -11,5 +11,7 @@ export interface AsyncJobStatusResponse {
   jobType: AsyncJobType | string;
   status: AsyncJobStatus | string;
   errorMessage: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
 }
-
