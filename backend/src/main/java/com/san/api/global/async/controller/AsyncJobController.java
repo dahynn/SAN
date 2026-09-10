@@ -1,6 +1,8 @@
 package com.san.api.global.async.controller;
 
 import com.san.api.global.async.dto.response.AsyncJobStatusResponse;
+import com.san.api.global.async.entity.AsyncJob;
+import com.san.api.global.async.entity.JobStatus;
 import com.san.api.global.async.service.AsyncJobManager;
 import com.san.api.global.exception.BusinessException;
 import com.san.api.global.exception.errorcode.CommonErrorCode;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * 비동기 잡 상태 조회 API.
@@ -42,10 +45,15 @@ public class AsyncJobController {
             Authentication authentication,
             @PathVariable UUID summaryId
     ) {
-        return ApiResponse.success(asyncJobManager.getTilGenerationHistory(summaryId, currentUserId(authentication))
-                .stream()
-                .map(AsyncJobStatusResponse::from)
-                .toList());
+        List<AsyncJob> jobs = asyncJobManager.getTilGenerationHistory(summaryId, currentUserId(authentication));
+        boolean hasActiveJob = jobs.stream().anyMatch(job -> job.getStatus() == JobStatus.PENDING || job.getStatus() == JobStatus.PROCESSING);
+        List<AsyncJobStatusResponse> response = IntStream.range(0, jobs.size())
+                .mapToObj(index -> {
+                    AsyncJob job = jobs.get(index);
+                    return AsyncJobStatusResponse.from(job, jobs.size() - index, job.getStatus() == JobStatus.FAILED && !hasActiveJob);
+                })
+                .toList();
+        return ApiResponse.success(response);
     }
 
     @Operation(summary = "실패한 TIL 생성 작업 재시도")
