@@ -299,6 +299,26 @@ class TilServiceTest {
     }
 
     @Test
+    void reviewEvidenceBlock_recordsOwnerReviewForCurrentTilContent() {
+        DailySummary summary = buildSummary(summaryId, user, LocalDate.of(2026, 5, 6), "TIL", "content");
+        when(dailySummaryRepository.findBySummaryIdWithUser(summaryId)).thenReturn(Optional.of(summary));
+
+        tilService.reviewEvidenceBlock(summaryId, userId, "BLOCK-2");
+
+        assertThat(summary.getReviewedEvidenceBlockIds()).containsExactly("BLOCK-2");
+    }
+
+    @Test
+    void reviewEvidenceBlock_rejectsInvalidBlockId() {
+        DailySummary summary = buildSummary(summaryId, user, LocalDate.of(2026, 5, 6), "TIL", "content");
+        when(dailySummaryRepository.findBySummaryIdWithUser(summaryId)).thenReturn(Optional.of(summary));
+
+        assertThatThrownBy(() -> tilService.reviewEvidenceBlock(summaryId, userId, "invalid"))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CommonErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @Test
     void getRecallCards_유사카드없음_태그조회없이_빈응답반환() {
         when(vectorSearchService.findRelatedByTil(summaryId, userId)).thenReturn(List.of());
 
