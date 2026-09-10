@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import java.util.List;
 
 /**
  * 비동기 잡 상태 조회 API.
@@ -32,6 +33,28 @@ public class AsyncJobController {
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<AsyncJobStatusResponse> getJobStatus(Authentication authentication, @PathVariable UUID jobId) {
         return ApiResponse.success(AsyncJobStatusResponse.from(asyncJobManager.getJobForUser(jobId, currentUserId(authentication))));
+    }
+
+    @Operation(summary = "TIL 생성 작업 실행 이력 조회")
+    @GetMapping("/til-generations/{summaryId}")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<List<AsyncJobStatusResponse>> getTilGenerationHistory(
+            Authentication authentication,
+            @PathVariable UUID summaryId
+    ) {
+        return ApiResponse.success(asyncJobManager.getTilGenerationHistory(summaryId, currentUserId(authentication))
+                .stream()
+                .map(AsyncJobStatusResponse::from)
+                .toList());
+    }
+
+    @Operation(summary = "실패한 TIL 생성 작업 재시도")
+    @PostMapping("/{jobId}/retry")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<AsyncJobStatusResponse> retryTilGeneration(Authentication authentication, @PathVariable UUID jobId) {
+        return ApiResponse.success(AsyncJobStatusResponse.from(
+                asyncJobManager.retryFailedTilGeneration(jobId, currentUserId(authentication))
+        ));
     }
 
     private UUID currentUserId(Authentication authentication) {
