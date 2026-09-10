@@ -18,7 +18,7 @@ interface UseTilGenerateMutationOptions {
 
 export function useTilGenerateMutation({ targetDate, onSuccess }: UseTilGenerateMutationOptions) {
   return useMutation({
-    mutationFn: () => tilApi.generate({ targetDate }),
+    mutationFn: (aiTransmissionConfirmed: boolean) => tilApi.generate({ targetDate, aiTransmissionConfirmed }),
     onSuccess,
   });
 }

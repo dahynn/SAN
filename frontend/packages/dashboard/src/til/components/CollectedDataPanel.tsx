@@ -119,6 +119,13 @@ export function CollectedDataPanel({ sourcesQuery, recallCardsQuery, selectedTil
                                 `SRC-xx`는 이 TIL 생성에 입력된 카드 스냅샷입니다. 문장별 인용이나 사실 검증을 의미하지는 않습니다.
                             </div>
                         ) : null}
+                        {sourcesQuery.data?.dataProtection ? (
+                            <div className="rounded-xl border border-action-accent/20 bg-action-accent/[0.06] px-4 py-3 text-sm leading-5 text-text-secondary">
+                                {sourcesQuery.data.dataProtection.maskedItemCount > 0
+                                    ? `AI 입력 보호 기록: 개인정보 패턴이 감지된 카드 입력 ${sourcesQuery.data.dataProtection.maskedItemCount}건을 마스킹하고, 사용자 확인 후 AI 처리 요청을 등록했습니다.`
+                                    : 'AI 입력 보호 기록: 개인정보 패턴은 감지되지 않았습니다.'}
+                            </div>
+                        ) : null}
                         {sourcesQuery.isPending && selectedTil && !import.meta.env.DEV ? (
                             <div className="py-10 text-center text-sm italic text-text-secondary opacity-50">
                                 수집 데이터를 불러오는 중...
