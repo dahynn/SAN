@@ -167,8 +167,20 @@ public class TilService {
                         summary.getAiMaskedItemCount(),
                         summary.getAiTransmissionConfirmedAt() != null,
                         summary.getAiTransmissionConfirmedAt()
-                )
+                ),
+                List.copyOf(summary.getReviewedEvidenceBlockIds())
         );
+    }
+
+    @Transactional
+    public void reviewEvidenceBlock(UUID summaryId, UUID userId, String blockId) {
+        DailySummary summary = dailySummaryRepository.findBySummaryIdWithUser(summaryId)
+                .orElseThrow(() -> new BusinessException(TilErrorCode.SUMMARY_NOT_FOUND));
+        validateSummaryOwner(summary, userId);
+        if (!blockId.matches("BLOCK-\\d+")) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "유효하지 않은 근거 검토 블록입니다.");
+        }
+        summary.reviewEvidenceBlock(blockId);
     }
 
     /**

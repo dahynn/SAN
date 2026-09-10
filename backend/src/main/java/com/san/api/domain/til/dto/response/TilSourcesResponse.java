@@ -7,6 +7,7 @@ public record TilSourcesResponse(
         List<TilSourceContentResponse> sources,
         boolean evidenceSnapshot,
         String evidenceScope,
-        TilDataProtectionResponse dataProtection
+        TilDataProtectionResponse dataProtection,
+        List<String> reviewedBlockIds
 ) {
 }
