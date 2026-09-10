@@ -67,6 +67,8 @@ class TilServiceTest {
     private AiEmbeddingClient aiEmbeddingClient;
     @Mock
     private TilSourceService tilSourceService;
+    @Mock
+    private AiDataProtectionService aiDataProtectionService;
 
     @InjectMocks
     private TilService tilService;
@@ -80,6 +82,7 @@ class TilServiceTest {
         userId = UUID.randomUUID();
         summaryId = UUID.randomUUID();
         user = buildUser(userId);
+        lenient().when(aiDataProtectionService.protect(any())).thenReturn(new AiDataProtectionService.ProtectionResult(0));
     }
 
     @Test
@@ -93,7 +96,7 @@ class TilServiceTest {
         when(dailySummaryService.createSummary(userId, targetDate, snapshots)).thenReturn(summary);
         when(asyncJobManager.enqueueInCurrentTransaction(JobType.TIL_GENERATION, summary.getSummaryId())).thenReturn(jobId);
 
-        TilGenerationJobResponse response = tilService.requestGeneration(userId, new TilGenerateRequest(targetDate));
+        TilGenerationJobResponse response = tilService.requestGeneration(userId, new TilGenerateRequest(targetDate, false));
 
         assertThat(response.summaryId()).isEqualTo(summary.getSummaryId());
         assertThat(response.jobId()).isEqualTo(jobId);
@@ -113,12 +116,25 @@ class TilServiceTest {
                 List.of(JobStatus.PENDING, JobStatus.PROCESSING)
         )).thenReturn(true);
 
-        assertThatThrownBy(() -> tilService.requestGeneration(userId, new TilGenerateRequest(targetDate)))
+        assertThatThrownBy(() -> tilService.requestGeneration(userId, new TilGenerateRequest(targetDate, false)))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", CommonErrorCode.DUPLICATE_RESOURCE);
         verify(dailySummaryRepository).acquireGenerationLock(userId);
         verifyNoInteractions(dailySummaryService, tilSourceService);
         verify(asyncJobManager, never()).enqueueInCurrentTransaction(any(), any());
+    }
+
+    @Test
+    void requestGeneration_sensitiveInputRequiresExplicitConfirmation() {
+        LocalDate targetDate = LocalDate.of(2026, 5, 6);
+        List<TilSourceSnapshot> snapshots = List.of(sourceSnapshot(UUID.randomUUID(), "개인정보", "010-1234-5678"));
+        when(tilSourceService.captureSnapshots(userId, targetDate)).thenReturn(snapshots);
+        when(aiDataProtectionService.protect(snapshots)).thenReturn(new AiDataProtectionService.ProtectionResult(1));
+
+        assertThatThrownBy(() -> tilService.requestGeneration(userId, new TilGenerateRequest(targetDate, false)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", TilErrorCode.AI_TRANSMISSION_CONFIRMATION_REQUIRED);
+        verifyNoInteractions(dailySummaryService);
     }
 
     @Test
@@ -236,6 +252,7 @@ class TilServiceTest {
         TilSourceSnapshot snapshot = sourceSnapshot(UUID.randomUUID(), "이미지 카드", "image");
         ReflectionTestUtils.setField(snapshot, "imageObjectKey", imageObjectKey);
         ReflectionTestUtils.setField(summary, "sourceSnapshots", List.of(snapshot));
+        summary.recordAiDataProtection(1, true);
 
         when(dailySummaryRepository.findBySummaryIdWithUser(summaryId)).thenReturn(Optional.of(summary));
         when(s3PresignedUrlService.createDownloadPresignedUrl(imageObjectKey)).thenReturn(imageUrl);
@@ -247,6 +264,9 @@ class TilServiceTest {
         assertThat(response.sources().get(0).imageUrl()).isEqualTo(imageUrl);
         assertThat(response.evidenceSnapshot()).isTrue();
         assertThat(response.evidenceScope()).isEqualTo("TIL_INPUT_SNAPSHOT");
+        assertThat(response.dataProtection()).isNotNull();
+        assertThat(response.dataProtection().maskedItemCount()).isEqualTo(1);
+        assertThat(response.dataProtection().transmissionConfirmed()).isTrue();
         verifyNoInteractions(knowledgeCardRepository);
     }
 
@@ -262,6 +282,7 @@ class TilServiceTest {
         assertThat(response.sources()).isEmpty();
         assertThat(response.evidenceSnapshot()).isFalse();
         assertThat(response.evidenceScope()).isEqualTo("UNAVAILABLE");
+        assertThat(response.dataProtection()).isNull();
         verifyNoInteractions(s3PresignedUrlService, knowledgeCardRepository);
     }
 
