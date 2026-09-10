@@ -13,8 +13,11 @@ import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /** 매일의 요약 엔티티 */
@@ -51,6 +54,20 @@ public class DailySummary extends BaseEntity {
     @CollectionTable(name = "daily_summary_sources", joinColumns = @JoinColumn(name = "summary_id"))
     @OrderColumn(name = "source_order")
     private List<TilSourceSnapshot> sourceSnapshots = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "daily_summary_evidence_reviews", joinColumns = @JoinColumn(name = "summary_id"))
+    @Column(name = "block_id", length = 64)
+    private Set<String> reviewedEvidenceBlockIds = new LinkedHashSet<>();
+
+    @Column(name = "ai_transmission_confirmed_at")
+    private LocalDateTime aiTransmissionConfirmedAt;
+
+    @Column(name = "ai_masked_item_count", nullable = false)
+    private int aiMaskedItemCount;
+
+    @Column(name = "ai_data_protection_policy", length = 64)
+    private String aiDataProtectionPolicy;
 
     /**
      * 매일의 요약 생성
@@ -100,6 +117,13 @@ public class DailySummary extends BaseEntity {
      */
     public void updateGeneratedResult(String title, String content, float[] embedding) {
         update(title, content, embedding);
+        reviewedEvidenceBlockIds.clear();
+    }
+
+    public void recordAiDataProtection(int maskedItemCount, boolean confirmed) {
+        this.aiMaskedItemCount = maskedItemCount;
+        this.aiDataProtectionPolicy = "SAN-AI-DATA-GUARD-V1";
+        this.aiTransmissionConfirmedAt = confirmed ? LocalDateTime.now() : null;
     }
 
     /**
@@ -113,6 +137,11 @@ public class DailySummary extends BaseEntity {
         this.title = title;
         this.content = content;
         this.embedding = embedding;
+        reviewedEvidenceBlockIds.clear();
+    }
+
+    public void reviewEvidenceBlock(String blockId) {
+        reviewedEvidenceBlockIds.add(blockId);
     }
 
     /** TIL을 삭제 처리 */

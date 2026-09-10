@@ -21,6 +21,7 @@ public enum TilErrorCode implements ErrorCode {
     TIL_GITHUB_REPOSITORY_NOT_CONNECTED(HttpStatus.BAD_REQUEST, "T008", "GitHub 커밋 대상 저장소를 하나만 연결해주세요."),
     TIL_GITHUB_FILE_PATH_UNAVAILABLE(HttpStatus.CONFLICT, "T009", "사용 가능한 TIL GitHub 파일 경로를 찾을 수 없습니다."),
     TIL_GITHUB_COMMIT_NOT_FOUND(HttpStatus.NOT_FOUND, "T010", "존재하지 않는 TIL GitHub 커밋 요청입니다."),
+    AI_TRANSMISSION_CONFIRMATION_REQUIRED(HttpStatus.CONFLICT, "T011", "민감정보가 감지되었습니다. 마스킹 후 AI 처리 전송을 확인해주세요."),
     ;
 
     private final HttpStatus status;

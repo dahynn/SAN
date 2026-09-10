@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -99,6 +100,31 @@ public class AsyncJobManager {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
         return job;
+    }
+
+    /** 선택한 TIL의 생성 실행 이력을 요청자에게만 반환한다. */
+    @Transactional(readOnly = true)
+    public List<AsyncJob> getTilGenerationHistory(UUID summaryId, UUID userId) {
+        return asyncJobRepository.findHistoryForUser(summaryId, JobType.TIL_GENERATION, userId);
+    }
+
+    /** 실패한 TIL 생성만 동일한 입력 스냅샷으로 다시 큐에 등록한다. */
+    @Transactional
+    public AsyncJob retryFailedTilGeneration(UUID failedJobId, UUID userId) {
+        AsyncJob failedJob = getJobForUser(failedJobId, userId);
+        if (failedJob.getJobType() != JobType.TIL_GENERATION || failedJob.getStatus() != JobStatus.FAILED) {
+            throw new BusinessException(CommonErrorCode.BAD_REQUEST, "실패한 TIL 생성 작업만 다시 시도할 수 있습니다.");
+        }
+        if (asyncJobRepository.existsByTargetIdAndJobTypeAndStatusIn(
+                failedJob.getTargetId(),
+                JobType.TIL_GENERATION,
+                List.of(JobStatus.PENDING, JobStatus.PROCESSING)
+        )) {
+            throw new BusinessException(CommonErrorCode.DUPLICATE_RESOURCE, "이미 TIL 생성 작업이 진행 중입니다.");
+        }
+
+        UUID retryJobId = enqueueInCurrentTransaction(JobType.TIL_GENERATION, failedJob.getTargetId(), userId);
+        return getJob(retryJobId);
     }
 
     @Transactional

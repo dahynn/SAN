@@ -51,6 +51,17 @@ public class TilController {
         return ApiResponse.success(response);
     }
 
+    @Operation(summary = "TIL 근거 검토 완료 표시", description = "입력 근거를 사용자가 확인한 TIL 블록을 저장합니다.")
+    @PutMapping("/{summaryId}/evidence-reviews/{blockId}")
+    public ApiResponse<Void> reviewEvidenceBlock(
+            Authentication authentication,
+            @PathVariable UUID summaryId,
+            @PathVariable String blockId
+    ) {
+        tilService.reviewEvidenceBlock(summaryId, currentUserId(authentication), blockId);
+        return ApiResponse.success(null);
+    }
+
     /**
      * TIL 삭제
      *

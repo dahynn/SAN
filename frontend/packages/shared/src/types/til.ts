@@ -4,6 +4,7 @@ import type { SourceType } from './scraps';
 
 export interface TilGenerateRequest {
   targetDate: string;
+  aiTransmissionConfirmed: boolean;
 }
 
 export interface TilUpdateRequest {
@@ -47,6 +48,15 @@ export interface TilSourcesResponse {
   sources: TilSourceContentResponse[];
   evidenceSnapshot: boolean;
   evidenceScope: 'TIL_INPUT_SNAPSHOT' | 'UNAVAILABLE';
+  dataProtection: TilDataProtectionResponse | null;
+  reviewedBlockIds: string[];
+}
+
+export interface TilDataProtectionResponse {
+  policyVersion: string;
+  maskedItemCount: number;
+  transmissionConfirmed: boolean;
+  transmissionConfirmedAt: string | null;
 }
 
 export type TilGithubCommitStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';

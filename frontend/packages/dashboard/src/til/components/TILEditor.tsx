@@ -85,7 +85,10 @@ export function TILEditor({
 
     const handleGenerate = () => {
         if (isGenerating) return;
-        generateMutation.mutate();
+        const confirmed = window.confirm(
+            '카드 원문은 AI 처리 전에 개인정보 패턴이 마스킹될 수 있습니다. 마스킹된 내용을 AI로 전송해 TIL을 생성할까요?'
+        );
+        if (confirmed) generateMutation.mutate(true);
     };
 
     const handleSave = () => {

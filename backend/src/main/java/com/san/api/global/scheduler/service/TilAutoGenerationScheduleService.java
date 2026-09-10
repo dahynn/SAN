@@ -38,7 +38,7 @@ public class TilAutoGenerationScheduleService {
         int enqueued = 0;
         for (UUID userId : userIds) {
             try {
-                tilService.requestGeneration(userId, new TilGenerateRequest(yesterday));
+                tilService.requestGeneration(userId, new TilGenerateRequest(yesterday, false));
                 enqueued++;
             } catch (Exception e) {
                 log.warn("[TilAutoGeneration] failed userId={}: {}", userId, e.getMessage());
