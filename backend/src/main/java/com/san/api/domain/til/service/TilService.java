@@ -11,6 +11,7 @@ import com.san.api.domain.scrap.entity.Scrap;
 import com.san.api.domain.til.dto.request.TilGenerateRequest;
 import com.san.api.domain.til.dto.request.TilUpdateRequest;
 import com.san.api.domain.til.dto.response.TilGenerationJobResponse;
+import com.san.api.domain.til.dto.response.TilDataProtectionResponse;
 import com.san.api.domain.til.dto.response.TilRecallCardsResponse;
 import com.san.api.domain.til.dto.response.TilResponse;
 import com.san.api.domain.til.dto.response.TilSourceContentResponse;
@@ -50,6 +51,7 @@ public class TilService {
     private final S3PresignedUrlService s3PresignedUrlService;
     private final AiEmbeddingClient aiEmbeddingClient;
     private final TilSourceService tilSourceService;
+    private final AiDataProtectionService aiDataProtectionService;
 
     /**
      * TIL 생성 비동기 작업 등록
@@ -64,7 +66,12 @@ public class TilService {
         validateNoActiveGenerationJob(userId);
 
         List<TilSourceSnapshot> sourceSnapshots = tilSourceService.captureSnapshots(userId, request.targetDate());
+        AiDataProtectionService.ProtectionResult protection = aiDataProtectionService.protect(sourceSnapshots);
+        if (protection.requiresConfirmation() && !request.aiTransmissionConfirmed()) {
+            throw new BusinessException(TilErrorCode.AI_TRANSMISSION_CONFIRMATION_REQUIRED);
+        }
         DailySummary summary = dailySummaryService.createSummary(userId, request.targetDate(), sourceSnapshots);
+        summary.recordAiDataProtection(protection.maskedItemCount(), request.aiTransmissionConfirmed());
         UUID jobId = asyncJobManager.enqueueInCurrentTransaction(JobType.TIL_GENERATION, summary.getSummaryId());
 
         return new TilGenerationJobResponse(
@@ -154,7 +161,13 @@ public class TilService {
         return new TilSourcesResponse(
                 sources,
                 !sources.isEmpty(),
-                sources.isEmpty() ? "UNAVAILABLE" : "TIL_INPUT_SNAPSHOT"
+                sources.isEmpty() ? "UNAVAILABLE" : "TIL_INPUT_SNAPSHOT",
+                summary.getAiDataProtectionPolicy() == null ? null : new TilDataProtectionResponse(
+                        summary.getAiDataProtectionPolicy(),
+                        summary.getAiMaskedItemCount(),
+                        summary.getAiTransmissionConfirmedAt() != null,
+                        summary.getAiTransmissionConfirmedAt()
+                )
         );
     }
 

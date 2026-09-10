@@ -6,6 +6,7 @@ import java.util.List;
 public record TilSourcesResponse(
         List<TilSourceContentResponse> sources,
         boolean evidenceSnapshot,
-        String evidenceScope
+        String evidenceScope,
+        TilDataProtectionResponse dataProtection
 ) {
 }
