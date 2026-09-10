@@ -10,7 +10,7 @@ import type {
 } from '@san/shared';
 import type { TilRecallCardsQuery, TilRecallQuizzesQuery, TilSourcesQuery } from '../types';
 import { CollectedDataCard, type CollectedDataItem } from './CollectedDataCard';
-import { useRecallQuizGenerateMutation, useTilGenerationRetryMutation } from '../hooks/useTilMutations';
+import { useRecallQuizGenerateMutation, useTilEvidenceReviewMutation, useTilGenerationRetryMutation } from '../hooks/useTilMutations';
 import { tilKeys, useTilAsyncJobStatus, useTilGenerationHistory, useTilRecallQuizzes } from '../hooks/useTilQueries';
 import { RecallHistory } from './RecallHistory';
 import { RecallQuizModal } from './RecallQuizModal';
@@ -48,6 +48,10 @@ export function CollectedDataPanel({ sourcesQuery, recallCardsQuery, selectedTil
     const retryGenerationMutation = useTilGenerationRetryMutation(() => {
         void queryClient.invalidateQueries({ queryKey: tilKeys.generationHistory(selectedTil?.summaryId) });
     });
+    const evidenceReviewMutation = useTilEvidenceReviewMutation(() => {
+        void queryClient.invalidateQueries({ queryKey: tilKeys.sources(selectedTil?.summaryId) });
+    });
+    const evidenceBlocks = useMemo(() => toEvidenceBlocks(selectedTil?.content), [selectedTil?.content]);
 
     const items: CollectedDataItem[] = useMemo(() => {
         const baseItems = sources.map((source) => ({
@@ -132,6 +136,14 @@ export function CollectedDataPanel({ sourcesQuery, recallCardsQuery, selectedTil
                                     : 'AI 입력 보호 기록: 개인정보 패턴은 감지되지 않았습니다.'}
                             </div>
                         ) : null}
+                        {selectedTil && sourcesQuery.data?.evidenceScope === 'TIL_INPUT_SNAPSHOT' && evidenceBlocks.length ? (
+                            <EvidenceReviewPanel
+                                blocks={evidenceBlocks}
+                                reviewedBlockIds={sourcesQuery.data.reviewedBlockIds}
+                                reviewPending={evidenceReviewMutation.isPending}
+                                onReview={(blockId) => evidenceReviewMutation.mutate({ summaryId: selectedTil.summaryId, blockId })}
+                            />
+                        ) : null}
                         {selectedTil && generationHistoryQuery.data?.length ? (
                             <TilGenerationHistory
                                 jobs={generationHistoryQuery.data}
@@ -201,6 +213,53 @@ function TilGenerationHistory({
             </ul>
         </section>
     );
+}
+
+function EvidenceReviewPanel({
+    blocks,
+    reviewedBlockIds,
+    reviewPending,
+    onReview,
+}: {
+    blocks: Array<{ id: string; text: string }>;
+    reviewedBlockIds: string[];
+    reviewPending: boolean;
+    onReview: (blockId: string) => void;
+}) {
+    const reviewed = new Set(reviewedBlockIds);
+    return (
+        <section className="rounded-xl border border-action-accent/20 bg-action-accent/[0.06] px-4 py-3 text-sm text-text-secondary">
+            <div className="mb-1 font-medium text-text-primary">근거 검토</div>
+            <p className="mb-3 leading-5">아래 TIL 블록은 자동 사실 검증이나 문장별 인용이 아닙니다. 하단의 `SRC-xx` 원문을 확인한 뒤 검토 완료로 표시해 주세요.</p>
+            <ul className="space-y-2">
+                {blocks.map((block, index) => {
+                    const isReviewed = reviewed.has(block.id);
+                    return (
+                        <li key={block.id} className="flex items-center justify-between gap-3">
+                            <span className="min-w-0 truncate">블록 {index + 1} · {block.text}</span>
+                            <button
+                                type="button"
+                                disabled={isReviewed || reviewPending}
+                                onClick={() => onReview(block.id)}
+                                className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-action-accent transition hover:bg-action-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {isReviewed ? '검토 완료' : '검토 표시'}
+                            </button>
+                        </li>
+                    );
+                })}
+            </ul>
+        </section>
+    );
+}
+
+function toEvidenceBlocks(content: string | null | undefined) {
+    if (!content) return [];
+    return content
+        .split(/\n\s*\n/)
+        .map((block) => block.replace(/^#{1,6}\s+/, '').replace(/\s+/g, ' ').trim())
+        .filter((block) => block.length > 0 && !block.startsWith('# TIL'))
+        .map((text, index) => ({ id: `BLOCK-${index + 1}`, text: text.slice(0, 72) }));
 }
 
 function formatJobStatus(status: string) {

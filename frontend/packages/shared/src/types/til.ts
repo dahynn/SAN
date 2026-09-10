@@ -49,6 +49,7 @@ export interface TilSourcesResponse {
   evidenceSnapshot: boolean;
   evidenceScope: 'TIL_INPUT_SNAPSHOT' | 'UNAVAILABLE';
   dataProtection: TilDataProtectionResponse | null;
+  reviewedBlockIds: string[];
 }
 
 export interface TilDataProtectionResponse {

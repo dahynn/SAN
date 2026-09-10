@@ -44,6 +44,11 @@ export function createTilApi(apiClient: AxiosInstance) {
         .get<ApiResponse<TilSourcesResponse>>(`/tils/${summaryId}/source`)
         .then((response) => unwrapApiResponse(response.data)),
 
+    reviewEvidenceBlock: (summaryId: string, blockId: string): Promise<void> =>
+      apiClient
+        .put<ApiResponse<void>>(`/tils/${summaryId}/evidence-reviews/${blockId}`)
+        .then((response) => unwrapApiResponse(response.data)),
+
     commitToGithub: (summaryId: string): Promise<TilGithubCommitJobResponse> =>
       apiClient
         .post<ApiResponse<TilGithubCommitJobResponse>>(`/til/${summaryId}/github-commit`)

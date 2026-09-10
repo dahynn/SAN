@@ -19,6 +19,14 @@ export function useTilGenerationRetryMutation(onSuccess?: (response: AsyncJobSta
   });
 }
 
+export function useTilEvidenceReviewMutation(onSuccess?: () => void) {
+  return useMutation({
+    mutationFn: ({ summaryId, blockId }: { summaryId: string; blockId: string }) =>
+      tilApi.reviewEvidenceBlock(summaryId, blockId),
+    onSuccess,
+  });
+}
+
 interface UseTilGenerateMutationOptions {
   targetDate: string;
   onSuccess?: (response: TilGenerationJobResponse) => void;
