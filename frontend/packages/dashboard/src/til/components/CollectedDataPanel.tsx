@@ -185,8 +185,8 @@ function TilGenerationHistory({
             <ul className="space-y-2">
                 {jobs.slice(0, 5).map((job) => (
                     <li key={job.jobId} className="flex items-center justify-between gap-3">
-                        <span>{formatJobStatus(job.status)} · {formatJobTime(job.completedAt ?? job.startedAt ?? job.createdAt)}</span>
-                        {job.status === 'FAILED' ? (
+                        <span>시도 {job.attemptNumber} · {formatJobStatus(job.status)} · {formatJobTime(job.completedAt ?? job.startedAt ?? job.createdAt)}</span>
+                        {job.retryable ? (
                             <button
                                 type="button"
                                 disabled={retryPending}
