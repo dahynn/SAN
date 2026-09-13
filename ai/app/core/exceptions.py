@@ -4,12 +4,15 @@ from fastapi.responses import JSONResponse
 
 
 _SAFE_AI_MESSAGES = {
+    "ai_audit_unavailable": "AI 실행 감사 기록을 저장할 수 없어 실행을 중단했습니다.",
+    "ai_release_not_approved": "승인되지 않은 AI 버전 조합이어서 실행을 중단했습니다.",
     "url_fetch_failed": "외부 문서를 가져오지 못했습니다. 공개적으로 접근 가능한 URL인지 확인해 주세요.",
     "url_content_empty": "외부 문서에서 분석할 본문을 찾지 못했습니다.",
     "image_access_failed": "이미지에 접근하지 못했습니다. 공개적으로 접근 가능한 URL인지 확인해 주세요.",
     "image_analysis_failed": "이미지 분석에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     "til_summarize_failed": "TIL 원문 요약에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     "til_generation_failed": "TIL 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    "til_output_contract_violation": "TIL 생성 결과 형식이 올바르지 않아 처리를 중단했습니다.",
     "embedding_failed": "임베딩 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.",
 }
 

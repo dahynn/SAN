@@ -26,13 +26,23 @@ _ERROR_RESPONSES = {
         },
     },
     422: {
-        "description": "AI 처리 실패 (`til_generation_failed` | `embedding_failed`)",
+        "description": (
+            "AI 처리 실패 (`ai_release_not_approved` | `ai_audit_unavailable` | "
+            "`til_generation_failed` | `til_output_contract_violation` | `embedding_failed`)"
+        ),
         "content": {
             "application/json": {
                 "examples": {
                     "til_generation_failed": {
                         "summary": "TIL 마크다운 생성 실패",
                         "value": {"error": "til_generation_failed", "message": "TIL 마크다운 생성 중 오류가 발생했습니다."},
+                    },
+                    "til_output_contract_violation": {
+                        "summary": "AI 출력 계약 위반",
+                        "value": {
+                            "error": "til_output_contract_violation",
+                            "message": "TIL 생성 결과 형식이 올바르지 않아 처리를 중단했습니다.",
+                        },
                     },
                     "embedding_failed": {
                         "summary": "임베딩 생성 실패",

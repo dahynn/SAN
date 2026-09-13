@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     openai_timeout: float = 180.0
     til_summary_max_concurrency: int = 4
     til_reduce_max_concurrency: int = 2
+    til_cache_enabled: bool = True
+    til_summary_cache_ttl_seconds: float = 1800.0
+    til_result_cache_ttl_seconds: float = 1800.0
+    til_direct_reduce_max_chars: int = 12000
+    ai_audit_db_path: str = "/tmp/san-ai-execution-audit.sqlite3"
     openai_embedding_model: str = "text-embedding-3-small"
     vectorstore_url: str = "http://localhost:6333"
     github_api_base_url: str = "https://api.github.com"

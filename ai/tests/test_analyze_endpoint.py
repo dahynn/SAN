@@ -169,12 +169,13 @@ def test_url_ftp_scheme_returns_400() -> None:
 
 # URL이 유효하지만 요청 중 오류가 발생하는 경우 422 상태 코드와 "url_fetch_failed" 오류 코드를 반환하는지 검증.
 def test_url_fetch_failure_returns_422() -> None:
-    with patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
-        mock_client = AsyncMock()
-        mock_client_cls.return_value.__aenter__.return_value = mock_client
-        mock_client.get.side_effect = Exception("connection refused")
+    with patch("app.services.preprocessor._validate_url", new_callable=AsyncMock):
+        with patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+            mock_client.get.side_effect = Exception("connection refused")
 
-        response = client.post("/ai/analyze", json={"input_type": "url", "content": "https://example.com"})
+            response = client.post("/ai/analyze", json={"input_type": "url", "content": "https://example.com"})
 
     assert response.status_code == 422
     assert response.json()["error"] == "url_fetch_failed"
@@ -189,15 +190,16 @@ def test_image_invalid_url_returns_400() -> None:
 
 # 이미지 URL이 유효하지만 접근할 수 없는 경우 422 상태 코드와 "image_access_failed" 오류 코드를 반환하는지 검증.
 def test_image_access_failure_returns_422() -> None:
-    with patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
-        mock_client = AsyncMock()
-        mock_client_cls.return_value.__aenter__.return_value = mock_client
-        mock_client.stream = MagicMock(side_effect=Exception("403 Forbidden"))
+    with patch("app.services.preprocessor._validate_url", new_callable=AsyncMock):
+        with patch("app.services.preprocessor.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+            mock_client.stream = MagicMock(side_effect=Exception("403 Forbidden"))
 
-        response = client.post(
-            "/ai/analyze",
-            json={"input_type": "image", "content": "https://s3.amazonaws.com/bucket/image.png"},
-        )
+            response = client.post(
+                "/ai/analyze",
+                json={"input_type": "image", "content": "https://s3.amazonaws.com/bucket/image.png"},
+            )
 
     assert response.status_code == 422
     assert response.json()["error"] == "image_access_failed"
