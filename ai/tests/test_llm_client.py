@@ -7,7 +7,7 @@ import pytest
 from dotenv import load_dotenv
 
 from app.core.exceptions import AIProcessingError
-from app.llms.client import LLMClient
+from app.llms.client import LLMClient, _response_text
 
 load_dotenv()
 
@@ -72,3 +72,13 @@ def test_call_json_raises_on_invalid_json() -> None:
     print(f"[예외 message] {exc_info.value.message}")
 
     assert exc_info.value.code == "analyze_failed"
+
+
+def test_response_text_flattens_responses_api_text_blocks() -> None:
+    content = [
+        {"type": "reasoning", "summary": []},
+        {"type": "text", "text": "첫 번째 문장"},
+        {"type": "text", "text": " 두 번째 문장"},
+    ]
+
+    assert _response_text(content) == "첫 번째 문장 두 번째 문장"
