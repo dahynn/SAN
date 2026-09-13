@@ -11,4 +11,5 @@ def create_openai_chat_model(settings: Settings | None = None) -> ChatOpenAI:
         api_key=settings.openai_api_key,
         base_url=settings.openai_base_url,
         timeout=settings.openai_timeout,
+        use_responses_api=settings.openai_use_responses_api,
     )
