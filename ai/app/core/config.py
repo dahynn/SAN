@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-5.2"
     openai_use_responses_api: bool = False
     openai_timeout: float = 180.0
+    til_summary_max_concurrency: int = 4
+    til_reduce_max_concurrency: int = 2
     openai_embedding_model: str = "text-embedding-3-small"
     vectorstore_url: str = "http://localhost:6333"
     github_api_base_url: str = "https://api.github.com"

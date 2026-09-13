@@ -1,5 +1,6 @@
 import asyncio
 
+from app.core.config import get_settings
 from app.core.exceptions import AIProcessingError, ContentValidationError
 from app.llms import EmbeddingClient, LLMClient
 from app.prompts import TIL_GROUP_PROMPT, TIL_SUMMARY_PROMPT
@@ -18,6 +19,17 @@ async def _summarize(llm: LLMClient, preprocessed: str) -> str:
         prompt=f"{TIL_SUMMARY_PROMPT}\n\n{_SOURCE_OPEN}\n{preprocessed}\n{_SOURCE_CLOSE}",
         error_code="til_summarize_failed",
     )
+
+
+async def _bounded_gather(limit: int, coroutines):
+    """Keep large document collections from flooding one model connection."""
+    semaphore = asyncio.Semaphore(max(1, limit))
+
+    async def run(coroutine):
+        async with semaphore:
+            return await coroutine
+
+    return await asyncio.gather(*(run(coroutine) for coroutine in coroutines))
 
 
 async def _reduce(llm: LLMClient, texts: list[str]) -> dict:
@@ -48,10 +60,12 @@ async def generate_til(request: TilRequest) -> TilResponse:
 
     if request.generate_til:
         llm = LLMClient()
+        settings = get_settings()
 
-        # Step 1: 카드별 개별 요약 (병렬)
-        summaries = list(await asyncio.gather(
-            *(_summarize(llm, p) for p in preprocessed_list)
+        # Step 1: 카드별 개별 요약. 대량 입력에서도 모델 연결을 과도하게 점유하지 않는다.
+        summaries = list(await _bounded_gather(
+            settings.til_summary_max_concurrency,
+            (_summarize(llm, p) for p in preprocessed_list),
         ))
 
         if len(summaries) <= _BATCH_SIZE:
@@ -60,8 +74,9 @@ async def generate_til(request: TilRequest) -> TilResponse:
         else:
             # Step 2: 3개씩 묶어 중간 TIL 생성 (배치 간 병렬)
             batches = [summaries[i:i + _BATCH_SIZE] for i in range(0, len(summaries), _BATCH_SIZE)]
-            intermediate = await asyncio.gather(
-                *(_reduce(llm, batch) for batch in batches)
+            intermediate = await _bounded_gather(
+                settings.til_reduce_max_concurrency,
+                (_reduce(llm, batch) for batch in batches),
             )
             # Step 3: 중간 TIL들을 합쳐 최종 TIL 생성
             result = await _reduce(llm, [r["til_markdown"] for r in intermediate])
