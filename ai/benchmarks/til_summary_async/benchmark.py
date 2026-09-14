@@ -114,24 +114,60 @@ def _summary(records: list[dict[str, Any]]) -> dict[str, Any]:
     return modes
 
 
+def _paired_summary(pairs: list[dict[str, Any]]) -> dict[str, Any]:
+    valid = [pair for pair in pairs if pair["sequential_ok"] and pair["parallel_ok"]]
+    saved_seconds = [pair["sequential_seconds"] - pair["parallel_seconds"] for pair in valid]
+    reduction_percentages = [
+        (pair["sequential_seconds"] - pair["parallel_seconds"]) / pair["sequential_seconds"] * 100
+        for pair in valid
+    ]
+    return {
+        "pairs": len(pairs),
+        "valid_pairs": len(valid),
+        "mean_seconds_saved": statistics.mean(saved_seconds) if saved_seconds else None,
+        "median_seconds_saved": statistics.median(saved_seconds) if saved_seconds else None,
+        "mean_reduction_percent": statistics.mean(reduction_percentages) if reduction_percentages else None,
+        "median_reduction_percent": statistics.median(reduction_percentages) if reduction_percentages else None,
+        "invalid_pairs": [pair["pair"] for pair in pairs if pair not in valid],
+    }
+
+
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--runs-per-mode", type=int, default=10)
+    parser.add_argument("--pairs", type=int, default=10)
     parser.add_argument("--seed", type=int, default=20260914)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    if args.runs_per_mode < 10:
-        raise ValueError("runs-per-mode must be at least 10 for career evidence")
+    if args.pairs < 10:
+        raise ValueError("pairs must be at least 10 for career evidence")
 
-    modes = ["sequential"] * args.runs_per_mode + ["parallel"] * args.runs_per_mode
-    random.Random(args.seed).shuffle(modes)
+    orders = ["AB"] * (args.pairs // 2) + ["BA"] * (args.pairs - args.pairs // 2)
+    random.Random(args.seed).shuffle(orders)
     settings = get_settings()
     records: list[dict[str, Any]] = []
-    for position, mode in enumerate(modes, start=1):
-        record = await _run_once(mode)
-        record["run"] = position
-        records.append(record)
-        print(json.dumps({"run": position, "mode": mode, "ok": record["ok"], "seconds": record["seconds"]}, ensure_ascii=False), flush=True)
+    pairs: list[dict[str, Any]] = []
+    for pair_number, order in enumerate(orders, start=1):
+        pair_records: dict[str, dict[str, Any]] = {}
+        modes = ("sequential", "parallel") if order == "AB" else ("parallel", "sequential")
+        for mode in modes:
+            record = await _run_once(mode)
+            record["run"] = len(records) + 1
+            record["pair"] = pair_number
+            records.append(record)
+            pair_records[mode] = record
+            print(json.dumps({"run": record["run"], "pair": pair_number, "mode": mode, "ok": record["ok"], "seconds": record["seconds"]}, ensure_ascii=False), flush=True)
+        pairs.append(
+            {
+                "pair": pair_number,
+                "order": order,
+                "sequential_run": pair_records["sequential"]["run"],
+                "parallel_run": pair_records["parallel"]["run"],
+                "sequential_ok": pair_records["sequential"]["ok"],
+                "parallel_ok": pair_records["parallel"]["ok"],
+                "sequential_seconds": pair_records["sequential"]["seconds"],
+                "parallel_seconds": pair_records["parallel"]["seconds"],
+            }
+        )
 
     result = {
         "schema_version": "1.0",
@@ -146,11 +182,17 @@ async def main() -> None:
         "cards_per_run": len(CARDS),
         "input_sha256": _sha256(CARDS),
         "prompt_sha256": _sha256(TIL_SUMMARY_PROMPT),
-        "runs_per_mode": args.runs_per_mode,
-        "randomization": {"method": "seeded shuffle", "seed": args.seed, "schedule": modes},
+        "runs_per_mode": args.pairs,
+        "randomization": {
+            "method": "balanced paired AB/BA order, then seeded shuffle",
+            "seed": args.seed,
+            "pair_orders": orders,
+        },
         "raw_model_output_persisted": False,
         "records": records,
+        "pairs": pairs,
         "summary": _summary(records),
+        "paired_summary": _paired_summary(pairs),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
