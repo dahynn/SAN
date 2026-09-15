@@ -46,6 +46,7 @@ export type {
   TagResponse,
 } from './knowledge';
 export type {
+  TilDataProtectionResponse,
   TilGenerateRequest,
   TilGenerationJobResponse,
   TilGithubCommitJobResponse,

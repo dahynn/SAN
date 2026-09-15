@@ -1,6 +1,8 @@
 package com.san.api.global.async.controller;
 
 import com.san.api.global.async.dto.response.AsyncJobStatusResponse;
+import com.san.api.global.async.entity.AsyncJob;
+import com.san.api.global.async.entity.JobStatus;
 import com.san.api.global.async.service.AsyncJobManager;
 import com.san.api.global.exception.BusinessException;
 import com.san.api.global.exception.errorcode.CommonErrorCode;
@@ -13,6 +15,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * 비동기 잡 상태 조회 API.
@@ -32,6 +36,33 @@ public class AsyncJobController {
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<AsyncJobStatusResponse> getJobStatus(Authentication authentication, @PathVariable UUID jobId) {
         return ApiResponse.success(AsyncJobStatusResponse.from(asyncJobManager.getJobForUser(jobId, currentUserId(authentication))));
+    }
+
+    @Operation(summary = "TIL 생성 작업 실행 이력 조회")
+    @GetMapping("/til-generations/{summaryId}")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<List<AsyncJobStatusResponse>> getTilGenerationHistory(
+            Authentication authentication,
+            @PathVariable UUID summaryId
+    ) {
+        List<AsyncJob> jobs = asyncJobManager.getTilGenerationHistory(summaryId, currentUserId(authentication));
+        boolean hasActiveJob = jobs.stream().anyMatch(job -> job.getStatus() == JobStatus.PENDING || job.getStatus() == JobStatus.PROCESSING);
+        List<AsyncJobStatusResponse> response = IntStream.range(0, jobs.size())
+                .mapToObj(index -> {
+                    AsyncJob job = jobs.get(index);
+                    return AsyncJobStatusResponse.from(job, jobs.size() - index, job.getStatus() == JobStatus.FAILED && !hasActiveJob);
+                })
+                .toList();
+        return ApiResponse.success(response);
+    }
+
+    @Operation(summary = "실패한 TIL 생성 작업 재시도")
+    @PostMapping("/{jobId}/retry")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<AsyncJobStatusResponse> retryTilGeneration(Authentication authentication, @PathVariable UUID jobId) {
+        return ApiResponse.success(AsyncJobStatusResponse.from(
+                asyncJobManager.retryFailedTilGeneration(jobId, currentUserId(authentication))
+        ));
     }
 
     private UUID currentUserId(Authentication authentication) {

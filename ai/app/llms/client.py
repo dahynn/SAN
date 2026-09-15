@@ -6,6 +6,26 @@ from langchain_core.messages import HumanMessage
 from app.core.exceptions import AIProcessingError
 from app.llms.openai import create_openai_chat_model
 
+
+def _response_text(content: object) -> str:
+    """Normalize Chat Completions and Responses API text content shapes."""
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        parts: list[str] = []
+        for part in content:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict) and isinstance(part.get("text"), str):
+                parts.append(part["text"])
+        text = "".join(parts)
+        if text:
+            return text
+
+    raise ValueError("LLM 응답에서 텍스트 콘텐츠를 찾을 수 없습니다.")
+
+
 # LLMClient는 OpenAI API를 호출하여 텍스트 및 이미지 응답을 처리하는 클래스입니다.
 class LLMClient:
     def __init__(self) -> None:
@@ -15,7 +35,7 @@ class LLMClient:
     def call(self, prompt: str, error_code: str) -> str:
         try:
             response = self._model.invoke(prompt)
-            return response.content
+            return _response_text(response.content)
         except Exception as e:
             raise AIProcessingError(code=error_code, message=str(e)) from e
 
@@ -31,7 +51,7 @@ class LLMClient:
     async def acall(self, prompt: str, error_code: str) -> str:
         try:
             response = await self._model.ainvoke(prompt)
-            return response.content
+            return _response_text(response.content)
         except Exception as e:
             raise AIProcessingError(code=error_code, message=str(e)) from e
 

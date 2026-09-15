@@ -20,7 +20,7 @@ export type TilRecallQuizzesQuery = UseQueryResult<RecallQuizListResponse>;
 export type TilSourcesQuery = UseQueryResult<TilSourcesResponse>;
 export type TilJobStatusQuery = UseQueryResult<AsyncJobStatusResponse>;
 
-export type TilGenerateMutation = UseMutationResult<TilGenerationJobResponse, Error, void, unknown>;
+export type TilGenerateMutation = UseMutationResult<TilGenerationJobResponse, Error, boolean, unknown>;
 export type TilGithubCommitMutation = UseMutationResult<TilGithubCommitJobResponse, Error, string, unknown>;
 export type TilUpdateMutation = UseMutationResult<TilResponse, Error, { summaryId: string; title: string; content: string }, unknown>;
 export type TilDeleteMutation = UseMutationResult<void, Error, string, unknown>;

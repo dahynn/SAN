@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, RotateCcw } from 'lucide-react';
 import type {
+    AsyncJobStatusResponse,
     RecallQuizResponse,
     RecallQuizType,
     TilResponse,
@@ -9,8 +10,8 @@ import type {
 } from '@san/shared';
 import type { TilRecallCardsQuery, TilRecallQuizzesQuery, TilSourcesQuery } from '../types';
 import { CollectedDataCard, type CollectedDataItem } from './CollectedDataCard';
-import { useRecallQuizGenerateMutation } from '../hooks/useTilMutations';
-import { tilKeys, useTilAsyncJobStatus, useTilRecallQuizzes } from '../hooks/useTilQueries';
+import { useRecallQuizGenerateMutation, useTilEvidenceReviewMutation, useTilGenerationRetryMutation } from '../hooks/useTilMutations';
+import { tilKeys, useTilAsyncJobStatus, useTilGenerationHistory, useTilRecallQuizzes } from '../hooks/useTilQueries';
 import { RecallHistory } from './RecallHistory';
 import { RecallQuizModal } from './RecallQuizModal';
 
@@ -42,6 +43,15 @@ export function CollectedDataPanel({ sourcesQuery, recallCardsQuery, selectedTil
     const sources = sourcesQuery.data?.sources ?? EMPTY_SOURCES;
     const recallCount = recallCardsQuery.data?.recallCards.length ?? 0;
     const recallQuizzesQuery = useTilRecallQuizzes(selectedTil?.targetDate, quizType, Boolean(selectedTil));
+    const generationHistoryQuery = useTilGenerationHistory(selectedTil?.summaryId);
+    const queryClient = useQueryClient();
+    const retryGenerationMutation = useTilGenerationRetryMutation(() => {
+        void queryClient.invalidateQueries({ queryKey: tilKeys.generationHistory(selectedTil?.summaryId) });
+    });
+    const evidenceReviewMutation = useTilEvidenceReviewMutation(() => {
+        void queryClient.invalidateQueries({ queryKey: tilKeys.sources(selectedTil?.summaryId) });
+    });
+    const evidenceBlocks = useMemo(() => toEvidenceBlocks(selectedTil?.content), [selectedTil?.content]);
 
     const items: CollectedDataItem[] = useMemo(() => {
         const baseItems = sources.map((source) => ({
@@ -119,6 +129,31 @@ export function CollectedDataPanel({ sourcesQuery, recallCardsQuery, selectedTil
                                 `SRC-xx`는 이 TIL 생성에 입력된 카드 스냅샷입니다. 문장별 인용이나 사실 검증을 의미하지는 않습니다.
                             </div>
                         ) : null}
+                        {sourcesQuery.data?.dataProtection ? (
+                            <div className="rounded-xl border border-action-accent/20 bg-action-accent/[0.06] px-4 py-3 text-sm leading-5 text-text-secondary">
+                                {sourcesQuery.data.dataProtection.maskedItemCount > 0
+                                    ? `AI 입력 보호 기록: 개인정보 패턴이 감지된 카드 입력 ${sourcesQuery.data.dataProtection.maskedItemCount}건을 마스킹하고, 사용자 확인 후 AI 처리 요청을 등록했습니다.`
+                                    : 'AI 입력 보호 기록: 개인정보 패턴은 감지되지 않았습니다.'}
+                            </div>
+                        ) : null}
+                        {selectedTil && sourcesQuery.data?.evidenceScope === 'TIL_INPUT_SNAPSHOT' && evidenceBlocks.length ? (
+                            <EvidenceReviewPanel
+                                blocks={evidenceBlocks}
+                                reviewedBlockIds={sourcesQuery.data.reviewedBlockIds}
+                                reviewPending={evidenceReviewMutation.isPending}
+                                onReview={(blockId) => evidenceReviewMutation.mutate({ summaryId: selectedTil.summaryId, blockId })}
+                            />
+                        ) : null}
+                        {selectedTil && generationHistoryQuery.data?.length ? (
+                            <TilGenerationHistory
+                                jobs={generationHistoryQuery.data}
+                                retryPending={retryGenerationMutation.isPending}
+                                onRetry={(jobId) => {
+                                    const confirmed = window.confirm('기존에 마스킹된 입력 스냅샷으로 TIL 생성을 다시 시도할까요?');
+                                    if (confirmed) retryGenerationMutation.mutate(jobId);
+                                }}
+                            />
+                        ) : null}
                         {sourcesQuery.isPending && selectedTil && !import.meta.env.DEV ? (
                             <div className="py-10 text-center text-sm italic text-text-secondary opacity-50">
                                 수집 데이터를 불러오는 중...
@@ -145,6 +180,97 @@ export function CollectedDataPanel({ sourcesQuery, recallCardsQuery, selectedTil
             )}
         </aside>
     );
+}
+
+function TilGenerationHistory({
+    jobs,
+    retryPending,
+    onRetry,
+}: {
+    jobs: AsyncJobStatusResponse[];
+    retryPending: boolean;
+    onRetry: (jobId: string) => void;
+}) {
+    return (
+        <section className="rounded-xl border border-text-secondary/10 bg-text-primary/[0.03] px-4 py-3 text-sm text-text-secondary">
+            <div className="mb-2 font-medium text-text-primary">AI 생성 실행 기록</div>
+            <ul className="space-y-2">
+                {jobs.slice(0, 5).map((job) => (
+                    <li key={job.jobId} className="flex items-center justify-between gap-3">
+                        <span>시도 {job.attemptNumber} · {formatJobStatus(job.status)} · {formatJobTime(job.completedAt ?? job.startedAt ?? job.createdAt)}</span>
+                        {job.retryable ? (
+                            <button
+                                type="button"
+                                disabled={retryPending}
+                                onClick={() => onRetry(job.jobId)}
+                                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-action-accent transition hover:bg-action-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <RotateCcw size={12} /> 다시 시도
+                            </button>
+                        ) : null}
+                    </li>
+                ))}
+            </ul>
+        </section>
+    );
+}
+
+function EvidenceReviewPanel({
+    blocks,
+    reviewedBlockIds,
+    reviewPending,
+    onReview,
+}: {
+    blocks: Array<{ id: string; text: string }>;
+    reviewedBlockIds: string[];
+    reviewPending: boolean;
+    onReview: (blockId: string) => void;
+}) {
+    const reviewed = new Set(reviewedBlockIds);
+    return (
+        <section className="rounded-xl border border-action-accent/20 bg-action-accent/[0.06] px-4 py-3 text-sm text-text-secondary">
+            <div className="mb-1 font-medium text-text-primary">근거 검토</div>
+            <p className="mb-3 leading-5">아래 TIL 블록은 자동 사실 검증이나 문장별 인용이 아닙니다. 하단의 `SRC-xx` 원문을 확인한 뒤 검토 완료로 표시해 주세요.</p>
+            <ul className="space-y-2">
+                {blocks.map((block, index) => {
+                    const isReviewed = reviewed.has(block.id);
+                    return (
+                        <li key={block.id} className="flex items-center justify-between gap-3">
+                            <span className="min-w-0 truncate">블록 {index + 1} · {block.text}</span>
+                            <button
+                                type="button"
+                                disabled={isReviewed || reviewPending}
+                                onClick={() => onReview(block.id)}
+                                className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-action-accent transition hover:bg-action-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {isReviewed ? '검토 완료' : '검토 표시'}
+                            </button>
+                        </li>
+                    );
+                })}
+            </ul>
+        </section>
+    );
+}
+
+function toEvidenceBlocks(content: string | null | undefined) {
+    if (!content) return [];
+    return content
+        .split(/\n\s*\n/)
+        .map((block) => block.replace(/^#{1,6}\s+/, '').replace(/\s+/g, ' ').trim())
+        .filter((block) => block.length > 0 && !block.startsWith('# TIL'))
+        .map((text, index) => ({ id: `BLOCK-${index + 1}`, text: text.slice(0, 72) }));
+}
+
+function formatJobStatus(status: string) {
+    if (status === 'COMPLETED') return '완료';
+    if (status === 'FAILED') return '실패';
+    if (status === 'PROCESSING') return '처리 중';
+    return '대기 중';
+}
+
+function formatJobTime(value: string) {
+    return new Date(value).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function ReviewStatusSummary({

@@ -1,0 +1,547 @@
+{
+  "schema_version": "1.0",
+  "started_at": "2026-09-14T04:32:04.247038+00:00",
+  "completed_at": "2026-09-14T04:37:48.779340+00:00",
+  "commit_sha": "91cd908585c1d5069dee5cb9e533e4ee0e53eb04",
+  "model": "gpt-5-mini",
+  "use_responses_api": true,
+  "scope": "card-summary stage only; excludes final reduction, embedding, application cache, Java backend and UI",
+  "control": "sequential calls over the same three cards",
+  "treatment": "asyncio.gather parallel calls over the same three cards",
+  "cards_per_run": 3,
+  "input_sha256": "c55b67ab4b86fc0fb9556c73504b11b51f3b5569ec54db0a4ed85e8835018afe",
+  "prompt_sha256": "cb6388520a1cf0aa3a3a6a6605d9aa8c0fd530fbdc60b0652cf49a0aa790aa13",
+  "runs_per_mode": 10,
+  "randomization": {
+    "method": "seeded shuffle",
+    "seed": 20260914,
+    "schedule": [
+      "sequential",
+      "sequential",
+      "sequential",
+      "sequential",
+      "sequential",
+      "sequential",
+      "parallel",
+      "parallel",
+      "parallel",
+      "sequential",
+      "sequential",
+      "sequential",
+      "parallel",
+      "parallel",
+      "parallel",
+      "parallel",
+      "sequential",
+      "parallel",
+      "parallel",
+      "parallel"
+    ]
+  },
+  "raw_model_output_persisted": false,
+  "records": [
+    {
+      "started_at": "2026-09-14T04:32:04.247038+00:00",
+      "mode": "sequential",
+      "seconds": 24.840546,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 8.235993,
+          "output_characters": 179
+        },
+        {
+          "ok": true,
+          "seconds": 6.795663,
+          "output_characters": 220
+        },
+        {
+          "ok": true,
+          "seconds": 9.808833,
+          "output_characters": 145
+        }
+      ],
+      "run": 1
+    },
+    {
+      "started_at": "2026-09-14T04:32:29.088926+00:00",
+      "mode": "sequential",
+      "seconds": 26.633997,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 6.572443,
+          "output_characters": 270
+        },
+        {
+          "ok": true,
+          "seconds": 10.418239,
+          "output_characters": 107
+        },
+        {
+          "ok": true,
+          "seconds": 9.643262,
+          "output_characters": 188
+        }
+      ],
+      "run": 2
+    },
+    {
+      "started_at": "2026-09-14T04:32:55.724641+00:00",
+      "mode": "sequential",
+      "seconds": 22.734766,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 9.413764,
+          "output_characters": 224
+        },
+        {
+          "ok": true,
+          "seconds": 6.643541,
+          "output_characters": 170
+        },
+        {
+          "ok": true,
+          "seconds": 6.677403,
+          "output_characters": 310
+        }
+      ],
+      "run": 3
+    },
+    {
+      "started_at": "2026-09-14T04:33:18.460592+00:00",
+      "mode": "sequential",
+      "seconds": 26.373647,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 8.009416,
+          "output_characters": 196
+        },
+        {
+          "ok": true,
+          "seconds": 11.168969,
+          "output_characters": 223
+        },
+        {
+          "ok": true,
+          "seconds": 7.195226,
+          "output_characters": 181
+        }
+      ],
+      "run": 4
+    },
+    {
+      "started_at": "2026-09-14T04:33:44.836339+00:00",
+      "mode": "sequential",
+      "seconds": 20.697945,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 8.941083,
+          "output_characters": 271
+        },
+        {
+          "ok": true,
+          "seconds": 7.678437,
+          "output_characters": 201
+        },
+        {
+          "ok": true,
+          "seconds": 4.078291,
+          "output_characters": 167
+        }
+      ],
+      "run": 5
+    },
+    {
+      "started_at": "2026-09-14T04:34:05.536574+00:00",
+      "mode": "sequential",
+      "seconds": 21.071301,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 5.332781,
+          "output_characters": 252
+        },
+        {
+          "ok": true,
+          "seconds": 6.638952,
+          "output_characters": 243
+        },
+        {
+          "ok": true,
+          "seconds": 9.099518,
+          "output_characters": 193
+        }
+      ],
+      "run": 6
+    },
+    {
+      "started_at": "2026-09-14T04:34:26.609316+00:00",
+      "mode": "parallel",
+      "seconds": 8.659095,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 8.65884,
+          "output_characters": 258
+        },
+        {
+          "ok": true,
+          "seconds": 6.156222,
+          "output_characters": 164
+        },
+        {
+          "ok": true,
+          "seconds": 7.563653,
+          "output_characters": 137
+        }
+      ],
+      "run": 7
+    },
+    {
+      "started_at": "2026-09-14T04:34:35.269305+00:00",
+      "mode": "parallel",
+      "seconds": 7.598664,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 7.22054,
+          "output_characters": 172
+        },
+        {
+          "ok": true,
+          "seconds": 7.279882,
+          "output_characters": 156
+        },
+        {
+          "ok": true,
+          "seconds": 7.597406,
+          "output_characters": 168
+        }
+      ],
+      "run": 8
+    },
+    {
+      "started_at": "2026-09-14T04:34:42.869729+00:00",
+      "mode": "parallel",
+      "seconds": 7.313425,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 7.031029,
+          "output_characters": 277
+        },
+        {
+          "ok": true,
+          "seconds": 7.114003,
+          "output_characters": 192
+        },
+        {
+          "ok": true,
+          "seconds": 7.312109,
+          "output_characters": 157
+        }
+      ],
+      "run": 9
+    },
+    {
+      "started_at": "2026-09-14T04:34:50.183916+00:00",
+      "mode": "sequential",
+      "seconds": 19.409174,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 5.991441,
+          "output_characters": 205
+        },
+        {
+          "ok": true,
+          "seconds": 6.700491,
+          "output_characters": 210
+        },
+        {
+          "ok": true,
+          "seconds": 6.717173,
+          "output_characters": 372
+        }
+      ],
+      "run": 10
+    },
+    {
+      "started_at": "2026-09-14T04:35:09.595694+00:00",
+      "mode": "sequential",
+      "seconds": 31.450881,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 14.892506,
+          "output_characters": 329
+        },
+        {
+          "ok": true,
+          "seconds": 7.546054,
+          "output_characters": 272
+        },
+        {
+          "ok": true,
+          "seconds": 9.012251,
+          "output_characters": 302
+        }
+      ],
+      "run": 11
+    },
+    {
+      "started_at": "2026-09-14T04:35:41.048381+00:00",
+      "mode": "sequential",
+      "seconds": 18.207894,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 4.873861,
+          "output_characters": 185
+        },
+        {
+          "ok": true,
+          "seconds": 9.268098,
+          "output_characters": 227
+        },
+        {
+          "ok": true,
+          "seconds": 4.065839,
+          "output_characters": 221
+        }
+      ],
+      "run": 12
+    },
+    {
+      "started_at": "2026-09-14T04:35:59.257773+00:00",
+      "mode": "parallel",
+      "seconds": 28.542892,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 28.542615,
+          "output_characters": 267
+        },
+        {
+          "ok": true,
+          "seconds": 6.818444,
+          "output_characters": 164
+        },
+        {
+          "ok": true,
+          "seconds": 6.613058,
+          "output_characters": 160
+        }
+      ],
+      "run": 13
+    },
+    {
+      "started_at": "2026-09-14T04:36:27.804267+00:00",
+      "mode": "parallel",
+      "seconds": 9.343802,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 9.212728,
+          "output_characters": 159
+        },
+        {
+          "ok": true,
+          "seconds": 9.34143,
+          "output_characters": 215
+        },
+        {
+          "ok": true,
+          "seconds": 5.744153,
+          "output_characters": 175
+        }
+      ],
+      "run": 14
+    },
+    {
+      "started_at": "2026-09-14T04:36:37.150309+00:00",
+      "mode": "parallel",
+      "seconds": 7.533012,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 7.326099,
+          "output_characters": 234
+        },
+        {
+          "ok": true,
+          "seconds": 5.956051,
+          "output_characters": 166
+        },
+        {
+          "ok": true,
+          "seconds": 7.530658,
+          "output_characters": 257
+        }
+      ],
+      "run": 15
+    },
+    {
+      "started_at": "2026-09-14T04:36:44.684488+00:00",
+      "mode": "parallel",
+      "seconds": 10.846616,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 10.846462,
+          "output_characters": 247
+        },
+        {
+          "ok": true,
+          "seconds": 5.696463,
+          "output_characters": 168
+        },
+        {
+          "ok": true,
+          "seconds": 6.586704,
+          "output_characters": 194
+        }
+      ],
+      "run": 16
+    },
+    {
+      "started_at": "2026-09-14T04:36:55.531541+00:00",
+      "mode": "sequential",
+      "seconds": 22.761954,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 5.372955,
+          "output_characters": 265
+        },
+        {
+          "ok": true,
+          "seconds": 10.484968,
+          "output_characters": 140
+        },
+        {
+          "ok": true,
+          "seconds": 6.903984,
+          "output_characters": 168
+        }
+      ],
+      "run": 17
+    },
+    {
+      "started_at": "2026-09-14T04:37:18.294173+00:00",
+      "mode": "parallel",
+      "seconds": 11.808316,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 6.614695,
+          "output_characters": 201
+        },
+        {
+          "ok": true,
+          "seconds": 11.807502,
+          "output_characters": 138
+        },
+        {
+          "ok": true,
+          "seconds": 6.845503,
+          "output_characters": 258
+        }
+      ],
+      "run": 18
+    },
+    {
+      "started_at": "2026-09-14T04:37:30.103391+00:00",
+      "mode": "parallel",
+      "seconds": 11.099184,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 10.223028,
+          "output_characters": 224
+        },
+        {
+          "ok": true,
+          "seconds": 7.911099,
+          "output_characters": 208
+        },
+        {
+          "ok": true,
+          "seconds": 11.098142,
+          "output_characters": 180
+        }
+      ],
+      "run": 19
+    },
+    {
+      "started_at": "2026-09-14T04:37:41.202769+00:00",
+      "mode": "parallel",
+      "seconds": 7.576433,
+      "ok": true,
+      "cards": [
+        {
+          "ok": true,
+          "seconds": 6.726624,
+          "output_characters": 242
+        },
+        {
+          "ok": true,
+          "seconds": 6.046173,
+          "output_characters": 139
+        },
+        {
+          "ok": true,
+          "seconds": 7.57611,
+          "output_characters": 259
+        }
+      ],
+      "run": 20
+    }
+  ],
+  "summary": {
+    "sequential": {
+      "runs": 10,
+      "successes": 10,
+      "success_rate": 1.0,
+      "mean_seconds": 23.4182105,
+      "median_seconds": 22.748359999999998,
+      "p95_seconds_nearest_rank": 31.450881,
+      "sample_standard_deviation_seconds": 3.981179202947043,
+      "failure_codes": []
+    },
+    "parallel": {
+      "runs": 10,
+      "successes": 10,
+      "success_rate": 1.0,
+      "mean_seconds": 11.0321439,
+      "median_seconds": 9.0014485,
+      "p95_seconds_nearest_rank": 28.542892,
+      "sample_standard_deviation_seconds": 6.3731470765944795,
+      "failure_codes": []
+    },
+    "mean_reduction_percent": 52.89074756587401
+  }
+}

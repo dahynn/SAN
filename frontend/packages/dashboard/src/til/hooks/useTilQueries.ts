@@ -10,6 +10,7 @@ export const tilKeys = {
     [...tilKeys.all, 'recall-quizzes', targetDate, quizType] as const,
   sources: (summaryId: string | null | undefined) => [...tilKeys.all, 'sources', summaryId] as const,
   asyncJob: (jobId: string | null | undefined) => ['async-job', jobId] as const,
+  generationHistory: (summaryId: string | null | undefined) => [...tilKeys.all, 'generation-history', summaryId] as const,
 };
 
 export function useTilByDate(
@@ -60,5 +61,14 @@ export function useTilAsyncJobStatus(jobId: string | null | undefined) {
       const status = query.state.data?.status;
       return status === 'PENDING' || status === 'PROCESSING' ? 1500 : false;
     },
+  });
+}
+
+export function useTilGenerationHistory(summaryId: string | null | undefined) {
+  return useQuery({
+    queryKey: tilKeys.generationHistory(summaryId),
+    queryFn: () => asyncJobsApi.getTilGenerationHistory(summaryId ?? ''),
+    enabled: Boolean(summaryId),
+    refetchInterval: (query) => query.state.data?.some((job) => job.status === 'PENDING' || job.status === 'PROCESSING') ? 1500 : false,
   });
 }

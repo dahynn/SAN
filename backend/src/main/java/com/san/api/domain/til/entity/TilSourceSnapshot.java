@@ -82,4 +82,9 @@ public class TilSourceSnapshot {
         this.aiInputType = aiInputType;
         this.aiInputContent = aiInputContent;
     }
+
+    /** 원문 스냅샷은 보존하고, 외부 AI에 전달할 입력만 정책에 따라 교체한다. */
+    public void replaceAiInputContent(String protectedContent) {
+        this.aiInputContent = protectedContent;
+    }
 }
