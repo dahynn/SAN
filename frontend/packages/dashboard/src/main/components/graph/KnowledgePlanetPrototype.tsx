@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderOpen, Loader2 } from 'lucide-react';
+import { ArrowLeft, FolderOpen, FolderTree, Loader2 } from 'lucide-react';
 import { useArchiveCategories, useArchiveCategoryCards, useArchiveCardTagRelations } from '@san/shared';
 import { graphFixtureCategories, graphFixtureLeavesByCategory } from './fixtures';
 
@@ -16,7 +16,8 @@ type CrossCard = { id: string; title: string; pos: Pos; catId: string };
 /* ── layout ── */
 
 const MAX_CARDS = 13;
-const SELECTED_CAT_DOCK_POS: Pos = { x: 50, y: 90 };
+const ROOT_POS: Pos = { x: 50, y: 91 };
+const SELECTED_CAT_DOCK_POS: Pos = { x: 50, y: 75 };
 
 const CAT_IDLE_PRESETS: Record<number, Pos[]> = {
   1: [{ x: 50, y: 48 }],
@@ -27,11 +28,11 @@ const CAT_IDLE_PRESETS: Record<number, Pos[]> = {
 };
 
 const CAT_DOCK_PRESETS: Record<number, Pos[]> = {
-  1: [{ x: 50, y: 90 }],
-  2: [{ x: 36, y: 90 }, { x: 64, y: 90 }],
-  3: [{ x: 18, y: 91 }, { x: 50, y: 89 }, { x: 82, y: 91 }],
-  4: [{ x: 12, y: 91 }, { x: 37, y: 90 }, { x: 63, y: 90 }, { x: 88, y: 91 }],
-  5: [{ x: 8, y: 92 }, { x: 28, y: 90 }, { x: 50, y: 89 }, { x: 72, y: 90 }, { x: 92, y: 92 }],
+  1: [{ x: 50, y: 75 }],
+  2: [{ x: 36, y: 75 }, { x: 64, y: 75 }],
+  3: [{ x: 18, y: 76 }, { x: 50, y: 74 }, { x: 82, y: 76 }],
+  4: [{ x: 12, y: 76 }, { x: 37, y: 75 }, { x: 63, y: 75 }, { x: 88, y: 76 }],
+  5: [{ x: 8, y: 77 }, { x: 28, y: 75 }, { x: 50, y: 74 }, { x: 72, y: 75 }, { x: 92, y: 77 }],
 };
 
 function clamp(v: number, lo: number, hi: number) {
@@ -384,6 +385,7 @@ export function KnowledgePlanetPrototype({ showMarkers = true }: { showMarkers?:
 
   const selIdx = categories.findIndex(c => c.id === selectedCatId);
   const selCatLivePos = selIdx >= 0 ? catPositions[selIdx] : null;
+  const focusOrigin = selCatLivePos ?? ROOT_POS;
 
   return (
     <section className="relative font-sans text-text-primary" style={{ minHeight: 'calc(100vh - var(--dashboard-nav-offset, 88px))' }}>
@@ -393,7 +395,43 @@ export function KnowledgePlanetPrototype({ showMarkers = true }: { showMarkers?:
       ) : showMarkers && !catQuery.isPending && !categories.length ? (
         <Msg><FolderOpen size={28} className="text-text-secondary/40" /><p className="text-sm text-text-secondary">표시할 카테고리가 없습니다.</p></Msg>
       ) : (
-        <div className="relative h-full w-full" style={{ minHeight: 'calc(100vh - var(--dashboard-nav-offset, 88px))' }} onClick={() => selectedCatId && setSelectedCatId(null)} role="presentation">
+        <div className="relative h-full w-full overflow-hidden" style={{ minHeight: 'calc(100vh - var(--dashboard-nav-offset, 88px))' }} onClick={() => selectedCatId && setSelectedCatId(null)} role="presentation">
+          <div
+            className="absolute inset-0 transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            style={{
+              transform: selectedCatId ? 'scale(1.12)' : 'scale(1)',
+              transformOrigin: `${focusOrigin.x}% ${focusOrigin.y}%`,
+            }}
+          >
+          <RootToCategoryLines root={ROOT_POS} categories={categories} selectedCategoryId={selectedCatId} />
+          <button
+            type="button"
+            onClick={(event) => { event.stopPropagation(); setHoveredCardId(null); setSelectedCatId(null); }}
+            className="absolute z-20 -translate-x-1/2 -translate-y-1/2 text-left outline-none"
+            style={{ left: `${ROOT_POS.x}%`, top: `${ROOT_POS.y}%` }}
+            aria-label="지식 숲 루트로 돌아가기"
+          >
+            <div className={`group flex min-w-[11rem] items-center gap-3 rounded-tl-[18px] rounded-br-[18px] rounded-tr-lg rounded-bl-lg border px-4 py-3 transition-all duration-300 ${selectedCatId ? 'border-action-accent/35 bg-surface-container/90 shadow-[0_12px_36px_rgba(0,0,0,0.28)]' : 'border-action-accent/70 bg-action-accent text-background shadow-[0_0_26px_rgba(74,222,128,0.28)]'}`}>
+              <span className={`grid h-8 w-8 place-items-center rounded-md ${selectedCatId ? 'bg-action-accent/12 text-action-accent' : 'bg-background/14 text-background'}`}>
+                {selectedCatId ? <ArrowLeft size={16} aria-hidden="true" /> : <FolderTree size={16} aria-hidden="true" />}
+              </span>
+              <span>
+                <span className={`block text-[10px] font-black uppercase tracking-[0.14em] ${selectedCatId ? 'text-action-accent/75' : 'text-background/65'}`}>THE ARCHIVE ROOT</span>
+                <span className={`mt-0.5 block text-xs font-bold ${selectedCatId ? 'text-text-primary' : 'text-background'}`}>{selectedCatId ? '전체 지식 숲으로 돌아가기' : '나의 지식 아카이브'}</span>
+              </span>
+            </div>
+          </button>
+          {selectedCat ? (
+            <div className="pointer-events-none absolute left-1/2 top-6 z-30 -translate-x-1/2 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-action-accent/80">FOCUS MODE</p>
+              <p className="mt-1 text-xs text-text-secondary"><span className="text-text-primary">Archive Root</span> <span className="px-1.5 text-text-secondary/45">/</span> {selectedCat.name}</p>
+            </div>
+          ) : (
+            <div className="pointer-events-none absolute left-1/2 top-6 z-30 -translate-x-1/2 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-action-accent/80">KNOWLEDGE FOREST</p>
+              <p className="mt-1 text-xs text-text-secondary">클러스터를 선택하면 연결된 지식 카드가 펼쳐집니다.</p>
+            </div>
+          )}
           {categories.map((cat, i) => {
             const pos = catPositions[i] ?? cat.idlePos;
             const isSelected = selectedCatId === cat.id;
@@ -434,9 +472,36 @@ export function KnowledgePlanetPrototype({ showMarkers = true }: { showMarkers?:
               <Loader2 size={20} className="animate-spin text-action-accent/40" />
             </div>
           )}
+          </div>
         </div>
       )}
     </section>
+  );
+}
+
+function RootToCategoryLines({ root, categories, selectedCategoryId }: { root: Pos; categories: CatNode[]; selectedCategoryId: string | null }) {
+  return (
+    <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full" style={{ zIndex: 1 }} viewBox="0 0 100 100" preserveAspectRatio="none">
+      {categories.map((category, index) => {
+        const target = selectedCategoryId === category.id ? SELECTED_CAT_DOCK_POS : category.idlePos;
+        const isFaded = Boolean(selectedCategoryId && selectedCategoryId !== category.id);
+        const bend = (target.x - root.x) * 0.08;
+        const d = `M${root.x} ${root.y - 2} C${root.x + bend} ${root.y - 12},${target.x - bend} ${target.y + 12},${target.x} ${target.y + 5}`;
+        return (
+          <path
+            key={category.id}
+            d={d}
+            fill="none"
+            stroke={`rgba(74,222,128,${isFaded ? 0.05 : 0.22})`}
+            strokeWidth="0.22"
+            strokeDasharray="1.4 1"
+            pathLength={1}
+            strokeDashoffset={0}
+            style={{ transition: `stroke 320ms ease ${index * 30}ms` }}
+          />
+        );
+      })}
+    </svg>
   );
 }
 
