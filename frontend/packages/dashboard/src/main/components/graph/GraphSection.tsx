@@ -2,7 +2,6 @@ import { type PointerEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Download, ExternalLink, Trees } from 'lucide-react';
 import { authTokenStorage } from '@dashboard/api/client';
-import { HomeSectionTitle } from '../layout/HomeSectionTitle';
 import { KnowledgePlanetPrototype } from './KnowledgePlanetPrototype';
 import { getExtensionInstallUrl } from '../../utils/extensionInstallUrl';
 
@@ -25,9 +24,6 @@ export function GraphSection() {
 
   return (
     <div className="relative mt-6 min-h-screen">
-      <div className="pointer-events-none absolute left-0 top-6 z-20 px-6">
-        <HomeSectionTitle>나의 지식 숲</HomeSectionTitle>
-      </div>
       {isChecking
         ? <div className="grid min-h-screen place-items-center"><span className="text-sm text-text-secondary">로딩 중...</span></div>
         : <KnowledgePlanetPrototype showMarkers />

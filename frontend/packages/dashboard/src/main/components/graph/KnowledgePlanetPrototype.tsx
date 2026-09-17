@@ -1,7 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, FolderOpen, FolderTree, Loader2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  BookOpen,
+  BrainCircuit,
+  FileText,
+  FolderOpen,
+  FolderTree,
+  Landmark,
+  Leaf,
+  Loader2,
+  Palette,
+  type LucideIcon,
+} from 'lucide-react';
 import { useArchiveCategories, useArchiveCategoryCards, useArchiveCardTagRelations } from '@san/shared';
 import { graphFixtureCategories, graphFixtureLeavesByCategory } from './fixtures';
 
@@ -18,6 +30,7 @@ type CrossCard = { id: string; title: string; pos: Pos; catId: string };
 const MAX_CARDS = 13;
 const ROOT_POS: Pos = { x: 50, y: 91 };
 const SELECTED_CAT_DOCK_POS: Pos = { x: 50, y: 75 };
+const CATEGORY_ICONS: LucideIcon[] = [Leaf, BrainCircuit, Landmark, Palette, BookOpen];
 
 const CAT_IDLE_PRESETS: Record<number, Pos[]> = {
   1: [{ x: 50, y: 48 }],
@@ -236,7 +249,13 @@ export function KnowledgePlanetPrototype({ showMarkers = true }: { showMarkers?:
     if (!apiCats?.length && useFixtures) {
       const idle = getCategoryIdlePositions(graphFixtureCategories.length);
       const dock = getCategoryDockPositions(graphFixtureCategories.length);
-      return graphFixtureCategories.map((c, i) => ({ id: c.id, name: c.name, count: 0, idlePos: idle[i], dockPos: dock[i] }));
+      return graphFixtureCategories.map((c, i) => ({
+        id: c.id,
+        name: c.name,
+        count: graphFixtureLeavesByCategory[c.id]?.length ?? 0,
+        idlePos: idle[i],
+        dockPos: dock[i],
+      }));
     }
     if (!apiCats?.length) return [];
     const idle = getCategoryIdlePositions(apiCats.length);
@@ -411,13 +430,13 @@ export function KnowledgePlanetPrototype({ showMarkers = true }: { showMarkers?:
             style={{ left: `${ROOT_POS.x}%`, top: `${ROOT_POS.y}%` }}
             aria-label="지식 숲 루트로 돌아가기"
           >
-            <div className={`group flex min-w-[11rem] items-center gap-3 rounded-tl-[18px] rounded-br-[18px] rounded-tr-lg rounded-bl-lg border px-4 py-3 transition-all duration-300 ${selectedCatId ? 'border-action-accent/35 bg-surface-container/90 shadow-[0_12px_36px_rgba(0,0,0,0.28)]' : 'border-action-accent/70 bg-action-accent text-background shadow-[0_0_26px_rgba(74,222,128,0.28)]'}`}>
-              <span className={`grid h-8 w-8 place-items-center rounded-md ${selectedCatId ? 'bg-action-accent/12 text-action-accent' : 'bg-background/14 text-background'}`}>
+            <div className={`group flex min-w-[13rem] items-center gap-3 rounded-xl border px-5 py-3.5 transition-all duration-300 ${selectedCatId ? 'border-action-accent/35 bg-surface-container/90 shadow-[0_12px_36px_rgba(0,0,0,0.28)]' : 'border-action-accent/80 bg-action-accent text-background shadow-[0_0_32px_rgba(74,222,128,0.28)]'}`}>
+              <span className={`grid h-9 w-9 place-items-center rounded-lg ${selectedCatId ? 'bg-action-accent/12 text-action-accent' : 'bg-background/14 text-background'}`}>
                 {selectedCatId ? <ArrowLeft size={16} aria-hidden="true" /> : <FolderTree size={16} aria-hidden="true" />}
               </span>
               <span>
-                <span className={`block text-[10px] font-black uppercase tracking-[0.14em] ${selectedCatId ? 'text-action-accent/75' : 'text-background/65'}`}>THE ARCHIVE ROOT</span>
-                <span className={`mt-0.5 block text-xs font-bold ${selectedCatId ? 'text-text-primary' : 'text-background'}`}>{selectedCatId ? '전체 지식 숲으로 돌아가기' : '나의 지식 아카이브'}</span>
+                <span className={`block text-[10px] font-black uppercase tracking-[0.16em] ${selectedCatId ? 'text-action-accent/75' : 'text-background/65'}`}>THE ARCHIVE ROOT</span>
+                <span className={`mt-0.5 block text-[11px] font-bold ${selectedCatId ? 'text-text-primary' : 'text-background'}`}>{selectedCatId ? '전체 지식 숲으로 돌아가기' : 'FOUNDATIONAL INTELLIGENCE'}</span>
               </span>
             </div>
           </button>
@@ -437,6 +456,7 @@ export function KnowledgePlanetPrototype({ showMarkers = true }: { showMarkers?:
             const isSelected = selectedCatId === cat.id;
             const isLinked = linkedCatIds.has(cat.id) || crossCatIds.has(cat.id);
             const hasSelection = selectedCatId !== null;
+            const CategoryIcon = CATEGORY_ICONS[i % CATEGORY_ICONS.length];
             return (
               <button key={cat.id} type="button"
                 onClick={e => { e.stopPropagation(); setHoveredCardId(null); setSelectedCatId(prev => prev === cat.id ? null : cat.id); }}
@@ -447,9 +467,14 @@ export function KnowledgePlanetPrototype({ showMarkers = true }: { showMarkers?:
                   opacity: hasSelection && !isSelected ? (isLinked ? 0.7 : 0.2) : 1,
                   transform: `translate(-50%,-50%) scale(${isSelected ? 1.1 : 1})`,
                 }}>
-                <div className={`flex min-w-[7.5rem] flex-col gap-1.5 rounded-tl-[20px] rounded-br-[20px] rounded-tr-lg rounded-bl-lg border px-4 py-3 glass-card !shadow-none transition-colors duration-300 ${isSelected ? 'border-action-accent/60 bg-action-accent/10' : isLinked ? 'border-action-accent/40 bg-action-accent/5' : 'border-action-accent/25 bg-surface-container/80 hover:border-action-accent/50 hover:bg-surface-container'}`}>
-                  <span className="text-xs font-bold uppercase tracking-wider text-text-primary">{cat.name}</span>
-                  <span className="text-[11px] text-text-secondary">{cat.count} cards</span>
+                <div className={`flex min-w-[9.5rem] items-center gap-3 rounded-xl border px-3.5 py-3 glass-card !shadow-none transition-all duration-300 ${isSelected ? 'border-action-accent/75 bg-action-accent/[0.09] shadow-[0_0_26px_rgba(74,222,128,0.2)]' : isLinked ? 'border-action-accent/40 bg-action-accent/[0.04]' : 'border-text-secondary/10 bg-surface-container/85 hover:border-action-accent/45 hover:bg-surface-container'}`}>
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border ${isSelected ? 'border-action-accent/30 bg-action-accent/15 text-action-accent' : 'border-text-secondary/10 bg-text-primary/[0.035] text-text-secondary'}`}>
+                    <CategoryIcon size={15} strokeWidth={1.7} aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 text-left">
+                    <span className={`block truncate text-xs font-bold ${isSelected ? 'text-text-primary' : 'text-text-primary/85'}`}>{cat.name}</span>
+                    <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.12em] text-text-secondary/70">{cat.count} cards</span>
+                  </span>
                 </div>
               </button>
             );
@@ -633,12 +658,15 @@ function CardGraph({ catPos, dockPos, cards, tagLineIndices, hoveredCardId, hovR
               transform: `translate(-50%,-50%) scale(${settled ? (isThis ? 1.06 : 1) : 0.4 + bloom * 0.6})`,
               transition: settled ? 'opacity 300ms ease-out, transform 300ms ease-out' : 'none',
             }}>
-            <div className={`flex w-[8.5rem] flex-col gap-1 rounded-tl-[14px] rounded-br-[14px] rounded-tr-md rounded-bl-md border px-3 py-2.5 glass-card !shadow-none transition-colors duration-200 ${isThis ? 'border-action-accent/60 bg-action-accent/8' : isRelated ? 'border-action-accent/35 bg-surface-container/90' : 'border-action-accent/18 bg-surface-container/80 hover:border-action-accent/34 hover:bg-surface-container'}`}>
-              <span className={`line-clamp-2 text-[11px] font-semibold leading-[1.4] ${isThis ? 'text-text-primary' : 'text-text-secondary'}`}>
+            <div className={`flex w-[9.25rem] flex-col gap-2 rounded-xl border px-3.5 py-3 glass-card !shadow-none transition-all duration-200 ${isThis ? 'border-action-accent/65 bg-action-accent/[0.09] shadow-[0_0_22px_rgba(74,222,128,0.17)]' : isRelated ? 'border-action-accent/35 bg-surface-container/90' : 'border-text-secondary/10 bg-surface-container/85 hover:border-action-accent/40 hover:bg-surface-container'}`}>
+              <span className={`grid h-7 w-7 place-items-center rounded-md border ${isThis ? 'border-action-accent/35 bg-action-accent/15 text-action-accent' : 'border-text-secondary/10 bg-text-primary/[0.035] text-text-secondary/80'}`}>
+                <FileText size={13} strokeWidth={1.8} aria-hidden="true" />
+              </span>
+              <span className={`line-clamp-2 text-[11px] font-semibold leading-[1.45] ${isThis ? 'text-text-primary' : 'text-text-primary/82'}`}>
                 {card.title}
               </span>
               {card.tags.length > 0 && (
-                <span className="truncate text-[10px] text-action-accent/60">
+                <span className="truncate text-[10px] text-action-accent/65">
                   {card.tags.slice(0, 2).map(t => `#${t}`).join(' ')}
                 </span>
               )}
